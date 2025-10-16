@@ -1,3 +1,39 @@
 <resources>
     <string name="app_name">SafeHer</string>
+
+    <!-- Screen Title -->
+    <string name="explore_screen_title">Explore</string>
+    <string name="sign_up_screen_title">Sign Up</string>
+    <string name="sign_in_screen_title">Sign In</string>
+    <string name="forgot_password_screen_title">Forgot Password</string>
+    <string name="splash_screen_title">Splash</string>
+    <string name="firebase_search_screen_title">Search</string>
+
+    <!-- Error Message -->
+    <string name="generic_error">An unknown error occurred.</string>
+    <string name="invalid_email">The email provided is not valid.</string>
+    <string name="invalid_password">Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, and a number.</string>
+    <string name="passwords_do_not_match">Passwords do not match.</string>
+
+    <!-- Sign In/Up/Out and Forgot Password -->
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="repeat_password">Repeat Password</string>
+    <string name="sign_in_with_email">Sign In with Email</string>
+    <string name="sign_up_with_email">Sign Up with Email</string>
+    <string name="sign_up_text">Don\'t have an account? Sign Up</string>
+    <string name="sign_in_text">Already have an account? Sign In</string>
+    <string name="sign_out_button_text">Sign out</string>
+    <string name="forgot_password_text">Forgot Password?</string>
+    <string name="forgot_password_subtitle">Enter your registered email below to receive password reset instructions.</string>
+    <string name="forgot_password_success_message">Success! If an account exists for that email, a reset link has been sent to your inbox.</string>
+    <string name="send_reset_link">Send Reset Link</string>
+    <string name="back_to_sign_in">Back to Sign In</string>
+
+    <!--  -->
+    <!--  -->
+    <!--  -->
+    <!--  -->
+    <!--  -->
+
 </resources>

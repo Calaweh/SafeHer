@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<defaults>
+    <entry>
+        <key>show_community_screen</key>
+        <value>true</value>
+    </entry>
+</defaults>
