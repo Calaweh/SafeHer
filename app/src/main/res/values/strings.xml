@@ -29,6 +29,8 @@
     <string name="forgot_password_success_message">Success! If an account exists for that email, a reset link has been sent to your inbox.</string>
     <string name="send_reset_link">Send Reset Link</string>
     <string name="back_to_sign_in">Back to Sign In</string>
+    <string name="friends_screen_title">Friends</string>
+    <string name="check_in_screen_title">Check-in</string>
 
     <!--  -->
     <!--  -->
