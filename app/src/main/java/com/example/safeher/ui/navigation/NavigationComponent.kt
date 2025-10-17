@@ -55,7 +55,9 @@ enum class Screen(@StringRes val title: Int) {
     SignIn(R.string.sign_in_screen_title),
     ForgotPassword(R.string.forgot_password_screen_title),
     Splash(R.string.splash_screen_title),
+    Friends(R.string.friends_screen_title),
     FirebaseSearch(R.string.firebase_search_screen_title),
+    CheckIn(R.string.check_in_screen_title)
 }
 
 data class MainNavItem(
@@ -136,7 +138,9 @@ fun MainAppLayout(
                         NavigationRailItem(
                             icon = {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(imageVector = item.icon, contentDescription = null)

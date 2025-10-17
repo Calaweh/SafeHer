@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "616469505955",
+    "project_id": "safeher-a2f47",
+    "storage_bucket": "safeher-a2f47.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:616469505955:android:d486bf511d0b0ed01cdc16",
+        "android_client_info": {
+          "package_name": "com.example.safeher"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "616469505955-0861b080u2u5egh4p2a3iii7htgi89k9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.safeher",
+            "certificate_hash": "7f0ad5de8ea9b26437328fa9409f770722801269"
+          }
+        },
+        {
+          "client_id": "616469505955-dqfh22666e05i8b2par17p6cs357f9mg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTc8kXha7RFq6-yW_VaIWKB7dLosNFkgA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "616469505955-dqfh22666e05i8b2par17p6cs357f9mg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

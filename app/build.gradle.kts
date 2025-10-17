@@ -115,4 +115,7 @@ dependencies {
     implementation(libs.accompanist.permissions)
 
     coreLibraryDesugaring(libs.desugarJdkLibs)
+
+    // AI
+    implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
 }
