@@ -10,7 +10,11 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.OfflineBolt
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
@@ -37,6 +41,7 @@ import com.example.safeher.ui.signin.SignInScreen
 import com.example.safeher.ui.signup.SignUpScreen
 import com.example.safeher.ui.splash.SplashScreenContent
 import com.example.safeher.ui.splash.SplashViewModel
+import com.example.safeher.ui.explore.ExploreScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.safeher.ui.friends.FriendsScreen
@@ -45,11 +50,14 @@ enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),
     SignUp(R.string.sign_up_screen_title),
     SignIn(R.string.sign_in_screen_title),
+    ResourcesHub(R.string.resources_hub_screen_title),
+    Profile(R.string.profile_screen_title),
+    Map(R.string.map_screen_title),
     ForgotPassword(R.string.forgot_password_screen_title),
     Splash(R.string.splash_screen_title),
     Friends(R.string.friends_screen_title),
     FirebaseSearch(R.string.firebase_search_screen_title),
-    CheckIn(R.string.check_in_screen_title),
+    CheckIn(R.string.check_in_screen_title)
 }
 
 data class MainNavItem(
@@ -99,7 +107,7 @@ fun MainAppLayout(
     showSplash: Boolean = false
 ) {
     val navController = rememberNavController()
-    val startDestination = if (isLoggedIn) Screen.CheckIn.name else Screen.SignIn.name /////////////////////////////
+    val startDestination = if (isLoggedIn) Screen.Explore.name else Screen.SignIn.name
 
     Log.d("MainAppLayout", "isLoggedIn: $isLoggedIn")
 
@@ -113,8 +121,10 @@ fun MainAppLayout(
     val shouldShowNavigationUi = currentScreen !in screensWithoutNavigationUi
 
     val mainNavItems = listOf(
-//        MainNavItem(Screen.Explore, Icons.Default.Explore, "Explore"),
-        MainNavItem(Screen.CheckIn, Icons.Default.Explore, "CheckIn"),
+        MainNavItem(Screen.Explore, Icons.Default.Explore, "Explore"),
+        MainNavItem(Screen.Friends, Icons.Default.People, "Friends"),
+        MainNavItem(Screen.ResourcesHub, Icons.Default.Book, "Resources"),
+        MainNavItem(Screen.Profile, Icons.Default.Person, "Profile"),
 //        MainNavItem(Screen.Offline, Icons.Outlined.OfflineBolt, "Offline"), //Example only
 //        MainNavItem(Screen.Community, Icons.Default.People, "Community"), ///////////////////////////////////
 //        MainNavItem(Screen.Library, Icons.Default.Book, "Library"),
@@ -276,7 +286,13 @@ private fun AppScaffold(
         ) {
             composable(Screen.SignIn.name) {
                 SignInScreen(
-                    openHomeScreen = { navController.navigate(Screen.CheckIn.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
+                    openHomeScreen = {
+                        navController.navigate(Screen.Explore.name) {
+                            popUpTo(
+                                navController.graph.findStartDestination().id
+                            ) { inclusive = true }
+                        }
+                    },
                     openSignUpScreen = { navController.navigate(Screen.SignUp.name) },
                     openForgotPasswordScreen = { navController.navigate(Screen.ForgotPassword.name) },
                     showError = showErrorSnackbar
@@ -284,7 +300,13 @@ private fun AppScaffold(
             }
             composable(Screen.SignUp.name) {
                 SignUpScreen(
-                    openHomeScreen = { navController.navigate(Screen.CheckIn.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
+                    openHomeScreen = {
+                        navController.navigate(Screen.Explore.name) {
+                            popUpTo(
+                                navController.graph.findStartDestination().id
+                            ) { inclusive = true }
+                        }
+                    },
                     openSignInScreen = { navController.navigate(Screen.SignIn.name) },
                     showErrorSnackbar = showErrorSnackbar
                 )
@@ -292,15 +314,40 @@ private fun AppScaffold(
             composable(Screen.ForgotPassword.name) {
                 ForgotPasswordScreen(openSignInScreen = { navController.navigate(Screen.SignIn.name) })
             }
+            composable(Screen.Explore.name) {
+                ExploreScreen(navController = navController)
+            }
             composable(Screen.Friends.name) {
-                FriendsScreen()
+                // TODO: Create FriendsScreen
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Friends Screen")
+                }
+            }
+            composable(Screen.ResourcesHub.name) {
+                // TODO: Create ResourcesHubScreen
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Resources Hub Screen")
+                }
+            }
+            composable(Screen.Profile.name) {
+                // TODO: Create ProfileScreen
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Profile Screen")
+                }
+            }
+            composable(Screen.Map.name) {
+                // TODO: Create MapScreen
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Map Screen")
+                }
             }
             composable(Screen.CheckIn.name) {
-                CheckInScreen()
+                // TODO: Create CheckInScreen
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Check-In Timer Screen")
+                }
             }
-
         }
     }
-
 }
 

@@ -8,6 +8,9 @@
     <string name="forgot_password_screen_title">Forgot Password</string>
     <string name="splash_screen_title">Splash</string>
     <string name="firebase_search_screen_title">Search</string>
+    <string name="resources_hub_screen_title">Resources Hub</string>
+    <string name="profile_screen_title">Profile</string>
+    <string name="map_screen_title">Map</string>
 
     <!-- Error Message -->
     <string name="generic_error">An unknown error occurred.</string>
