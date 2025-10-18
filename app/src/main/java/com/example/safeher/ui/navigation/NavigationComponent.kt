@@ -1,23 +1,16 @@
 package com.example.safeher.ui.navigation
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.outlined.OfflineBolt
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
@@ -32,15 +25,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import coil.ImageLoader
 import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
+import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.forgotpassword.ForgotPasswordScreen
 import com.example.safeher.ui.signin.SignInScreen
 import com.example.safeher.ui.signup.SignUpScreen
@@ -48,6 +39,7 @@ import com.example.safeher.ui.splash.SplashScreenContent
 import com.example.safeher.ui.splash.SplashViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.safeher.ui.friends.FriendsScreen
 
 enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),
@@ -57,7 +49,7 @@ enum class Screen(@StringRes val title: Int) {
     Splash(R.string.splash_screen_title),
     Friends(R.string.friends_screen_title),
     FirebaseSearch(R.string.firebase_search_screen_title),
-    CheckIn(R.string.check_in_screen_title)
+    CheckIn(R.string.check_in_screen_title),
 }
 
 data class MainNavItem(
@@ -107,7 +99,7 @@ fun MainAppLayout(
     showSplash: Boolean = false
 ) {
     val navController = rememberNavController()
-    val startDestination = if (isLoggedIn) Screen.Explore.name else Screen.SignIn.name
+    val startDestination = if (isLoggedIn) Screen.CheckIn.name else Screen.SignIn.name /////////////////////////////
 
     Log.d("MainAppLayout", "isLoggedIn: $isLoggedIn")
 
@@ -121,7 +113,8 @@ fun MainAppLayout(
     val shouldShowNavigationUi = currentScreen !in screensWithoutNavigationUi
 
     val mainNavItems = listOf(
-        MainNavItem(Screen.Explore, Icons.Default.Explore, "Explore"),
+//        MainNavItem(Screen.Explore, Icons.Default.Explore, "Explore"),
+        MainNavItem(Screen.CheckIn, Icons.Default.Explore, "CheckIn"),
 //        MainNavItem(Screen.Offline, Icons.Outlined.OfflineBolt, "Offline"), //Example only
 //        MainNavItem(Screen.Community, Icons.Default.People, "Community"), ///////////////////////////////////
 //        MainNavItem(Screen.Library, Icons.Default.Book, "Library"),
@@ -283,7 +276,7 @@ private fun AppScaffold(
         ) {
             composable(Screen.SignIn.name) {
                 SignInScreen(
-                    openHomeScreen = { navController.navigate(Screen.Explore.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
+                    openHomeScreen = { navController.navigate(Screen.CheckIn.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
                     openSignUpScreen = { navController.navigate(Screen.SignUp.name) },
                     openForgotPasswordScreen = { navController.navigate(Screen.ForgotPassword.name) },
                     showError = showErrorSnackbar
@@ -291,13 +284,19 @@ private fun AppScaffold(
             }
             composable(Screen.SignUp.name) {
                 SignUpScreen(
-                    openHomeScreen = { navController.navigate(Screen.Explore.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
+                    openHomeScreen = { navController.navigate(Screen.CheckIn.name) { popUpTo(navController.graph.findStartDestination().id) { inclusive = true } } },
                     openSignInScreen = { navController.navigate(Screen.SignIn.name) },
                     showErrorSnackbar = showErrorSnackbar
                 )
             }
             composable(Screen.ForgotPassword.name) {
                 ForgotPasswordScreen(openSignInScreen = { navController.navigate(Screen.SignIn.name) })
+            }
+            composable(Screen.Friends.name) {
+                FriendsScreen()
+            }
+            composable(Screen.CheckIn.name) {
+                CheckInScreen()
             }
 
         }

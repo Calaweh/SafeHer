@@ -2,6 +2,7 @@ package com.example.safeher.data.repository
 
 import android.net.Uri
 import android.util.Log
+import com.example.safeher.data.datasource.FriendRemoteDataSource
 import com.example.safeher.data.datasource.MediaRemoteDataSource
 import com.example.safeher.data.datasource.UserDataSource
 import com.example.safeher.data.model.User
@@ -17,10 +18,11 @@ class UserRepository @Inject constructor(
     private val userDataSource: UserDataSource,
     private val authRepository: AuthRepository,
     private val firestore: FirebaseFirestore,
-    private val mediaRemoteDataSource: MediaRemoteDataSource
+    private val mediaRemoteDataSource: MediaRemoteDataSource,
+    private val friendRemoteDataSource: FriendRemoteDataSource
 ) {
 
-    private val usersCollection = firestore.collection("users") // new add
+    private val usersCollection = firestore.collection("users")
     private val _cancellationEvent = MutableSharedFlow<Unit>()
     val cancellationEvent = _cancellationEvent.asSharedFlow()
 
@@ -40,32 +42,31 @@ class UserRepository @Inject constructor(
 
     suspend fun update(user: User) {
         userDataSource.update(user)
+        friendRemoteDataSource.updateByUser(user)
+
     }
 
     suspend fun delete(userId: String) {
         userDataSource.delete(userId)
+        friendRemoteDataSource.deleteByUser(userId)
     }
 
     suspend fun updateProfile(
         userId: String,
         newName: String,
-        newImageUrl: String?, // URL from text input
-        newImageUri: Uri?     // URI from file picker
+        newImageUrl: String?,
+        newImageUri: Uri?
     ) {
         val user = getUser(userId) ?: throw IllegalStateException("User to update not found")
 
-        // Determine the final image URL. Upload from URI has priority.
         val finalImageUrl = if (newImageUri != null) {
             try {
-                // 1. Upload the image URI using the data source, which handles the
-                //    Base64 conversion and chunking to Firestore.
                 val mediaId = mediaRemoteDataSource.uploadImageFromUri(newImageUri, userId)
 
-                // 2. Construct the special Firestore media URL with the required prefix.
                 "${MediaRemoteDataSource.MEDIA_ID_PREFIX}$mediaId"
             } catch (e: Exception) {
                 Log.e("UserRepository", "Failed to upload profile image via MediaRemoteDataSource", e)
-                throw e // Propagate the error to be caught by the ViewModel
+                throw e
             }
         } else {
             newImageUrl?.takeIf { it.isNotBlank() } ?: user.imageUrl
@@ -77,11 +78,6 @@ class UserRepository @Inject constructor(
         )
 
         usersCollection.document(userId).update(updates).await()
-
-//        user.artistId?.let { artistId ->
-//            artistRepository.updateArtistImage(artistId, finalImageUrl)
-//        }
-        ///////////////////////////////
 
     }
 
@@ -95,38 +91,5 @@ class UserRepository @Inject constructor(
         )
         userDocRef.update(updates).await()
         _cancellationEvent.emit(Unit)
-    }
-
-    suspend fun updateCurrentUserToPremium() {
-        val userId = authRepository.getCurrentUserId()
-
-        val userDocRef = firestore.collection("users").document(userId)
-
-        userDocRef.update("isPremium", true).await()
-    }
-
-    suspend fun updateUserArtistId(userId: String, artistId: String) { // this fun new add
-        try {
-            usersCollection.document(userId).update("artistId", artistId).await()
-        } catch (e: Exception) {
-            // Handle error, e.g., log it
-        }
-    }
-
-    suspend fun updateAutoDebitSettings(isEnabled: Boolean, paymentMethod: String?) {
-        val userId = authRepository.getCurrentUserId()
-        val userDocRef = firestore.collection("users").document(userId)
-
-        val updates = mapOf(
-            "autoDebitEnabled" to isEnabled,
-            "savedPaymentMethod" to paymentMethod
-        )
-        userDocRef.update(updates).await()
-    }
-
-    suspend fun savePaymentDetails(details: Map<String, String>?) {
-        val userId = authRepository.getCurrentUserId()
-        val userDocRef = firestore.collection("users").document(userId)
-        userDocRef.update("savedPaymentDetails", details).await()
     }
 }

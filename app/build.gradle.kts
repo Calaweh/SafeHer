@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.startup.runtime)
+    implementation(libs.androidx.lifecycle.service)
     ksp(libs.androidx.room.compiler)
 
     // Firebase
@@ -118,4 +119,14 @@ dependencies {
 
     // AI
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
+
+    // tmp GMS
+    implementation("com.google.maps.android:maps-compose:2.11.4")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.maps.android:maps-compose:2.11.4")
+//    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    // HMS
+//    implementation("com.huawei.hms:maps:6.10.0.300")
+//    implementation("com.huawei.hms.maps.compose:maps-compose:1.0.0")
 }

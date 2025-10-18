@@ -33,6 +33,7 @@ startupRuntime = "1.1.1"
 desugarJdkLibs = "2.0.4"
 firebasePerf = "20.5.2"
 firebaseConfig = "21.6.3"
+lifecycleService = "2.9.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -88,6 +89,7 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 
 # Desugaring
 desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

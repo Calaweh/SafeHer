@@ -1,4 +1,4 @@
-package com.example.safeher.data.injection
+package com.example.safeher.di
 
 import com.example.safeher.data.service.ConfigurationService
 import com.example.safeher.data.service.FirestoreConfigurationService

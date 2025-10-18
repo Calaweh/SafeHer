@@ -1,5 +1,6 @@
 package com.example.safeher.ui.friends
 
+import android.widget.ImageButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -20,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,11 +42,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,9 +66,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,6 +82,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -83,27 +90,58 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.safeher.R
+import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.Friends
 import com.example.safeher.data.model.User
 import com.example.safeher.ui.theme.SafeHerTheme
+import kotlin.math.roundToInt
+
+@Composable
+fun FriendsScreen(
+    modifier: Modifier = Modifier,
+    viewModel: FriendsViewModel = hiltViewModel()
+) {
+    val friends by viewModel.friendsState.collectAsState()
+
+    FriendsScreenContent(
+        friends = friends,
+        onAccept = { friendId -> viewModel.acceptFriendRequest(friendId) },
+        onReject = { friendId -> viewModel.rejectFriendRequest(friendId) },
+        onRemove = { friendId -> viewModel.removeFriend(friendId) },
+        onAddFriend = { email -> viewModel.addFriend(email) },
+        modifier = modifier
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreenContent(
     friends: Friends,
-    searchText: String,
-    searchBarOnValueChange: (String) -> Unit = {},
-    onReject: () -> Unit = {},
-    onAccept: () -> Unit = {},
-    onRemove: () -> Unit = {},
+    onReject: (String) -> Unit = {},
+    onAccept: (String) -> Unit = {},
+    onRemove: (String) -> Unit = {},
+    onDismissRequest: () -> Unit = {},
+    onAddFriend: (String) -> Unit = {},
     modifier: Modifier
 ) {
     var isShowFriendsList by rememberSaveable { mutableStateOf(true) }
     var searchText by remember { mutableStateOf("") }
+    var showAddFriendDialog by remember { mutableStateOf(false) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+
+    if (showAddFriendDialog) {
+        AddFriendDialog(
+            onDismissRequest = { showAddFriendDialog = false },
+            onSendRequest = { email ->
+                onAddFriend(email)
+                showAddFriendDialog = false
+            }
+        )
+    }
 
     Scaffold (
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -151,6 +189,47 @@ fun FriendsScreenContent(
                 )
             )
 
+            Box(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clickable(
+                                onClick = { showAddFriendDialog = true },
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            )
+                            .size(40.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             TabSelector(
                 isLeftSelected = isShowFriendsList,
                 onLeftClick = { isShowFriendsList = true },
@@ -170,7 +249,7 @@ fun FriendsScreenContent(
             }
 
             AnimatedContent(
-                targetState = isShowFriendsList to filteredItems,
+                targetState = isShowFriendsList,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)) +
                             slideInVertically(animationSpec = tween(300)) { it / 4 } togetherWith
@@ -178,8 +257,13 @@ fun FriendsScreenContent(
                             slideOutVertically(animationSpec = tween(300)) { -it / 4 }
                 },
                 label = "list_animation"
-            ) { (isFriendMode, items) ->
-                if (items.isEmpty()) {
+            ) { isFriendMode ->
+                val listItems = if (isFriendMode) friends.friends else friends.requestList
+                val filteredItems = listItems.filter {
+                    it.displayName.contains(searchText, ignoreCase = true)
+                }
+
+                if (filteredItems.isEmpty()) {
                     EmptyStateView(
                         isFriendMode = isFriendMode,
                         hasSearchQuery = searchText.isNotEmpty()
@@ -191,17 +275,16 @@ fun FriendsScreenContent(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
-                            items = items,
+                            items = filteredItems,
                             key = { it.id }
                         ) { item ->
                             FriendRequestItem(
                                 item = item,
                                 isFriendMode = isFriendMode,
-                                onAccept = onAccept,
-                                onReject = onReject,
-                                onRemove = onRemove,
-                                modifier = Modifier
-                                    .fillMaxWidth()
+                                onAccept = { onAccept(item.documentId) },
+                                onReject = { onReject(item.documentId) },
+                                onRemove = { onRemove(item.documentId) },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -209,6 +292,46 @@ fun FriendsScreenContent(
             }
         }
     }
+}
+
+@Composable
+fun AddFriendDialog(
+    onDismissRequest: () -> Unit,
+    onSendRequest: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Add a Friend") },
+        text = {
+            Column {
+                Text("Enter your friend's email address to send them a request.")
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { onSendRequest(email) })
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSendRequest(email) },
+                enabled = email.isNotEmpty()
+            ) {
+                Text("Send Request")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -231,7 +354,7 @@ fun TabSelector(
         label = "indicator"
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
@@ -241,14 +364,16 @@ fun TabSelector(
             )
             .padding(4.dp)
     ) {
-        // Animated Indicator
-        var boxWidth by remember { mutableStateOf(0) }
+        val tabWidth = this.maxWidth / 2
+        val density = LocalDensity.current
+
+        val tabWidthPx = with(density) { tabWidth.toPx() }
 
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.5f)
-                .offset { IntOffset((indicatorOffset * boxWidth).toInt(), 0) }
+                .width(tabWidth)
+                .offset { IntOffset((indicatorOffset * tabWidthPx).roundToInt(), 0) }
                 .background(
                     color = MaterialTheme.colorScheme.primary,
                     shape = RoundedCornerShape(12.dp)
@@ -377,7 +502,7 @@ fun EmptyStateView(
 
 @Composable
 fun FriendRequestItem(
-    item: User,
+    item: Friend,
     isFriendMode: Boolean,
     onAccept: () -> Unit,
     onReject: () -> Unit,
@@ -387,7 +512,7 @@ fun FriendRequestItem(
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = modifier,
+        modifier = modifier.height(70.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -400,7 +525,7 @@ fun FriendRequestItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(vertical = 6.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar with border
@@ -454,6 +579,7 @@ fun FriendRequestItem(
                         contentDescription = "Remove friend"
                     )
                 }
+
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalIconButton(
@@ -489,13 +615,49 @@ fun FriendRequestItem(
 @Preview(showSystemUi = true)
 @Composable
 fun FriendsScreenPreview() {
-    SafeHerTheme (darkTheme = true) {
+    SafeHerTheme (darkTheme = false) {
         FriendsScreenContent(
             friends = Friends(
-                friends = listOf(),
-                requestList = listOf()
+                friends = listOf(
+                    Friend(
+                        id = "1",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John Doe",
+                    ),
+                    Friend(
+                        id = "3",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John Doe",
+                    ),
+                    Friend(
+                        id = "4",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John hh",
+                    ),
+                    Friend(
+                        id = "5",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John hh",
+                    ),
+                    Friend(
+                        id = "6",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John hh",
+                    ),
+                    Friend(
+                        id = "7",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "John hh",
+                    ),
+                    ),
+                requestList = listOf(
+                    Friend(
+                        id = "2",
+                        imageUrl = "https://example.com/avatar1.jpg",
+                        displayName = "666",
+                    )
+                )
             ),
-            "",
             modifier = Modifier
         )
     }
