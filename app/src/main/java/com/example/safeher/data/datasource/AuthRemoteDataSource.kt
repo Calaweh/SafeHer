@@ -1,5 +1,6 @@
 package com.example.safeher.data.datasource
 
+import android.util.Log
 import com.example.safeher.data.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -44,6 +45,7 @@ class AuthRemoteDataSource @Inject constructor(
                 anonymous = false
             )
             firestore.collection(USER_COLLECTION).document(newUser.id).set(newUser).await()
+            Log.d("AuthRemoteDataSource", "User ${newUser.id} create successfully")
         } else {
             throw IllegalStateException("Firebase user was null after creation.")
         }

@@ -1,9 +1,11 @@
 package com.example.safeher.data.datasource
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.dataObjects
 import com.google.firebase.firestore.toObject
+import com.google.firebase.firestore.toObjects
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import com.example.safeher.data.model.User
@@ -43,12 +45,27 @@ class UserDataSource @Inject constructor(
     fun getUsers(userId: String): Flow<List<User>> {
         return firestore.collection(USER_COLLECTION)
             .whereEqualTo(USER_ID_FIELD, userId)
-//            .orderBy(USER_ID_FIELD, Query.Direction.DESCENDING)
             .dataObjects()
     }
 
     suspend fun getUser(userId: String): User? {
         return firestore.collection(USER_COLLECTION).document(userId).get().await().toObject()
+    }
+
+    suspend fun getUserByEmail(email: String): User? {
+        return try {
+            Log.d("UserDataSource", "Fetching user by email: $email")
+            val querySnapshot = firestore.collection(USER_COLLECTION)
+                .whereEqualTo(EMAIL_FIELD, email)
+                .limit(1)
+                .get()
+                .await()
+
+            querySnapshot.toObjects<User>().firstOrNull()
+        } catch (e: Exception) {
+            Log.e("UserDataSource", "Error fetching user by email: $email", e)
+            null
+        }
     }
 
     suspend fun create(user: User): String {
@@ -76,5 +93,6 @@ class UserDataSource @Inject constructor(
     companion object {
         private const val USER_ID_FIELD = "userId"
         private const val USER_COLLECTION = "users"
+        private const val EMAIL_FIELD = "email"
     }
 }

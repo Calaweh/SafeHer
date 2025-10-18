@@ -1,15 +1,11 @@
 package com.example.safeher.ui.navigation
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -33,15 +29,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import coil.ImageLoader
 import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
+import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.forgotpassword.ForgotPasswordScreen
 import com.example.safeher.ui.signin.SignInScreen
 import com.example.safeher.ui.signup.SignUpScreen
@@ -50,6 +44,7 @@ import com.example.safeher.ui.splash.SplashViewModel
 import com.example.safeher.ui.explore.ExploreScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.safeher.ui.friends.FriendsScreen
 
 enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),

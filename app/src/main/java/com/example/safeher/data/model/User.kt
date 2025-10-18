@@ -11,12 +11,7 @@ data class User(
     val imageUrl: String = "",
     val displayName: String = "",
     val anonymous: Boolean = true,
-    @get:PropertyName("isPremium")
-    val isPremium: Boolean = false,
-    val autoDebitEnabled: Boolean = false,
-    val savedPaymentDetails: Map<String, String>? = null,
-    val artistId: String? = null,
     @get:ServerTimestamp val deletedAt: Date? = null
 ) {
-    constructor() : this("", "", "", "", true, false, false, null)
+    constructor() : this("", "", "", "", true, null)
 }
