@@ -54,7 +54,6 @@ enum class Screen(@StringRes val title: Int) {
     SignUp(R.string.sign_up_screen_title),
     SignIn(R.string.sign_in_screen_title),
     ResourcesHub(R.string.resources_hub_screen_title),
-    //AIChat("AI Chat"),
     Profile(R.string.profile_screen_title),
     Map(R.string.map_screen_title),
     ForgotPassword(R.string.forgot_password_screen_title),
@@ -326,12 +325,12 @@ private fun AppScaffold(
             }
             composable(Screen.ResourcesHub.name) {
                 ResourceHubScreen(
-                    onStartChat = { navController.navigate("chat") }
+                    onStartChat = { navController.navigate("AI Chat") }
                 )
             }
-            composable("chat") {
+            composable("AI Chat") {
                 AIChat(
-                    onBackClick = { navController.navigate(Screen.ResourcesHub.name) }
+                    onBackClick = { navController.popBackStack() }
                 )
             }
             composable(Screen.Profile.name) {

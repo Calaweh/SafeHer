@@ -55,8 +55,7 @@ fun AIChat(
 
     Scaffold(
         modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars),
+            .fillMaxSize(),
         topBar = {
             // Top bar
             Surface(
@@ -67,7 +66,7 @@ fun AIChat(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(top = 8.dp, bottom = 8.dp, start = 12.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBackClick) {

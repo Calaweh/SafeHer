@@ -58,7 +58,7 @@ fun ResourceHubScreen(
                 .background(Color(0xFFF5F7FA))
                 .verticalScroll(scrollState)
                 .padding(paddingValues)
-                .padding(8.dp),
+                .padding(horizontal = 20.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Emergency Alert Banner
@@ -86,12 +86,12 @@ fun ResourceHubScreen(
                         Text(
                             "In Crisis?",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             color = alertRed
                         )
                         Text(
                             "Help is available 24/7. Tap any service below.",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = Color(0xFF5D4037)
                         )
                     }
