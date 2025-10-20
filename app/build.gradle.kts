@@ -74,7 +74,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.coil.compose)
-    implementation("androidx.compose.material:material:1.6.6")
+    implementation("androidx.compose.material:material-icons-extended:1.7.3")
 
     // Room
     implementation(libs.androidx.room.runtime)
