@@ -8,7 +8,7 @@ import com.example.safeher.data.datasource.LocationRemoteDataSource
 import com.example.safeher.data.datasource.UserDataSource
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.repository.FriendRepository
-import com.example.safeher.data.utils.ILocationProvider
+import com.example.safeher.utils.ILocationProvider
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -5,6 +5,7 @@ import android.content.Context
 import android.location.Location
 import android.os.Looper
 import android.util.Log
+import com.example.safeher.utils.ILocationProvider
 import com.google.android.gms.location.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose

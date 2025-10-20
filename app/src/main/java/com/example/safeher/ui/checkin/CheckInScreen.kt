@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.model.LocationSharingState
 import com.example.safeher.data.model.SharingMode
@@ -31,14 +32,17 @@ import com.google.accompanist.permissions.*
 @Composable
 fun LocationSharingSection(
     sharingState: LocationSharingState,
+    friends: List<Friend>,
     arePermissionsGranted: Boolean,
     onRequestPermissions: () -> Unit,
-    onStartInstant: (Long) -> Unit,
-    onStartDelayed: (Long) -> Unit,
+    onStartInstant: (Long, List<String>) -> Unit,
+    onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    var showTimerDialog by remember { mutableStateOf(false) }
+    var showFriendDialog by remember { mutableStateOf(false) }
     var shareMode by remember { mutableStateOf<ShareMode?>(null) }
+    var selectedDuration by remember { mutableLongStateOf(0L) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -90,10 +94,11 @@ fun LocationSharingSection(
                         Button(
                             { if (arePermissionsGranted) {
                                 shareMode = ShareMode.INSTANT
-                                showDialog = true
+                                showTimerDialog = true
                             } else {
                                 onRequestPermissions()
-                            } },
+                            }
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
@@ -109,7 +114,7 @@ fun LocationSharingSection(
                             onClick = {
                                 if (arePermissionsGranted) {
                                     shareMode = ShareMode.DELAYED
-                                    showDialog = true
+                                    showTimerDialog = true
                                 } else {
                                     onRequestPermissions()
                                 }
@@ -259,21 +264,31 @@ fun LocationSharingSection(
         }
     }
 
-    if (showDialog && shareMode != null) {
+    if (showTimerDialog && shareMode != null) {
         TimerSelectionDialog(
             mode = shareMode!!,
-            onDismiss = {
-                showDialog = false
-                shareMode = null
-            },
+            onDismiss = { showTimerDialog = false },
             onConfirm = { minutes ->
+                selectedDuration = minutes
+                showTimerDialog = false
+                showFriendDialog = true
+            }
+        )
+    }
+
+    if (showFriendDialog && shareMode != null) {
+        Log.d("LocationSharingSection", "showing friend dialog")
+        FriendSelectionDialog(
+            friends = friends,
+            onDismiss = { showFriendDialog = false },
+            onConfirm = { selectedFriendIds ->
+
                 when (shareMode) {
-                    ShareMode.INSTANT -> onStartInstant(minutes)
-                    ShareMode.DELAYED -> onStartDelayed(minutes)
+                    ShareMode.INSTANT -> onStartInstant(selectedDuration, selectedFriendIds)
+                    ShareMode.DELAYED -> onStartDelayed(selectedDuration, selectedFriendIds)
                     null -> {}
                 }
-                showDialog = false
-                shareMode = null
+                showFriendDialog = false
             }
         )
     }
@@ -378,10 +393,12 @@ fun CheckInScreen(
 ) {
     val sharingState by checkInViewModel.sharingState.collectAsState()
     val friendLocations by mapViewModel.friendLocations.collectAsState()
+    val friends by checkInViewModel.friends.collectAsState()
 
     CheckInScreenContent(
         sharingState = sharingState,
         friendLocations = friendLocations,
+        friends = friends,
         onStartInstant = checkInViewModel::startInstantShare,
         onStartDelayed = checkInViewModel::startDelayedShare,
         onStop = checkInViewModel::stopSharing
@@ -393,8 +410,9 @@ fun CheckInScreen(
 fun CheckInScreenContent(
     sharingState: LocationSharingState,
     friendLocations: List<LiveLocation>,
-    onStartInstant: (Long) -> Unit,
-    onStartDelayed: (Long) -> Unit,
+    friends: List<Friend>,
+    onStartInstant: (Long, List<String>) -> Unit,
+    onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -421,29 +439,20 @@ fun CheckInScreenContent(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Check-In") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
-            )
-        }
-    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            Log.d("CheckInScreenContent", "showing location sharing section")
             LocationSharingSection(
                 sharingState = sharingState,
                 arePermissionsGranted = permissionState.allPermissionsGranted,
                 onRequestPermissions = { permissionState.launchMultiplePermissionRequest() },
+                friends = friends,
                 onStartInstant = onStartInstant,
                 onStartDelayed = onStartDelayed,
                 onStop = onStop
@@ -461,6 +470,7 @@ fun CheckInScreenContent(
 
                 val firstFriendLocation = friendLocations.first()
 
+                Log.d("CheckInScreenContent", "showing static map preview")
                 StaticMapPreview(
                     location = firstFriendLocation,
                     modifier = Modifier.padding(top = 8.dp)
@@ -478,7 +488,7 @@ fun CheckInScreenContent(
 //            // Recent Check-ins Section
 //            RecentCheckInsSection()
         }
-    }
+
 }
 
 //@Preview(name = "Check-In Screen - Idle State", showBackground = true)
@@ -494,58 +504,58 @@ fun CheckInScreenContent(
 //    }
 //}
 
-@Preview(name = "Location Section - Idle", showBackground = true)
-@Composable
-fun LocationSharingSectionIdlePreview() {
-    SafeHerTheme {
-        LocationSharingSection(
-            sharingState = LocationSharingState(mode = SharingMode.IDLE),
-            arePermissionsGranted = false,
-            onRequestPermissions = {},
-            onStartInstant = {},
-            onStartDelayed = {},
-            onStop = {}
-        )
-    }
-}
-
-@Preview(name = "Location Section - Countdown", showBackground = true)
-@Composable
-fun LocationSharingSectionCountdownPreview() {
-    SafeHerTheme {
-        LocationSharingSection(
-            sharingState = LocationSharingState(
-                mode = SharingMode.COUNTDOWN,
-                timeLeftInMillis = 14, // Example time
-                totalDurationInMillis = 15
-            ),
-            arePermissionsGranted = false,
-            onRequestPermissions = {},
-            onStartInstant = {},
-            onStartDelayed = {},
-            onStop = {}
-        )
-    }
-}
-
-@Preview(name = "Location Section - Sharing", showBackground = true)
-@Composable
-fun LocationSharingSectionSharingPreview() {
-    SafeHerTheme {
-        LocationSharingSection(
-            sharingState = LocationSharingState(
-                mode = SharingMode.SHARING,
-                timeLeftInMillis = 28,
-                totalDurationInMillis = 30
-            ),
-            arePermissionsGranted = false,
-            onRequestPermissions = {},
-            onStartInstant = {},
-            onStartDelayed = {},
-            onStop = {}
-        )
-    }
-}
+//@Preview(name = "Location Section - Idle", showBackground = true)
+//@Composable
+//fun LocationSharingSectionIdlePreview() {
+//    SafeHerTheme {
+//        LocationSharingSection(
+//            sharingState = LocationSharingState(mode = SharingMode.IDLE),
+//            arePermissionsGranted = false,
+//            onRequestPermissions = {},
+//            onStartInstant = {},
+//            onStartDelayed = {},
+//            onStop = {}
+//        )
+//    }
+//}
+//
+//@Preview(name = "Location Section - Countdown", showBackground = true)
+//@Composable
+//fun LocationSharingSectionCountdownPreview() {
+//    SafeHerTheme {
+//        LocationSharingSection(
+//            sharingState = LocationSharingState(
+//                mode = SharingMode.COUNTDOWN,
+//                timeLeftInMillis = 14, // Example time
+//                totalDurationInMillis = 15
+//            ),
+//            arePermissionsGranted = false,
+//            onRequestPermissions = {},
+//            onStartInstant = {},
+//            onStartDelayed = {},
+//            onStop = {}
+//        )
+//    }
+//}
+//
+//@Preview(name = "Location Section - Sharing", showBackground = true)
+//@Composable
+//fun LocationSharingSectionSharingPreview() {
+//    SafeHerTheme {
+//        LocationSharingSection(
+//            sharingState = LocationSharingState(
+//                mode = SharingMode.SHARING,
+//                timeLeftInMillis = 28,
+//                totalDurationInMillis = 30
+//            ),
+//            arePermissionsGranted = false,
+//            onRequestPermissions = {},
+//            onStartInstant = {},
+//            onStartDelayed = {},
+//            onStop = {}
+//        )
+//    }
+//}
 
 @Preview(name = "Timer Dialog - Instant Share")
 @Composable

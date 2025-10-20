@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -54,6 +55,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -70,6 +72,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,12 +85,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -97,6 +103,7 @@ import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.Friends
 import com.example.safeher.data.model.User
 import com.example.safeher.ui.theme.SafeHerTheme
+import kotlin.collections.isNotEmpty
 import kotlin.math.roundToInt
 
 @Composable
@@ -105,13 +112,19 @@ fun FriendsScreen(
     viewModel: FriendsViewModel = hiltViewModel()
 ) {
     val friends by viewModel.friendsState.collectAsState()
+    val error by viewModel.errorState.collectAsState()
+    val addFriendSuccess by viewModel.addFriendSuccess.collectAsState()
 
     FriendsScreenContent(
         friends = friends,
+        error = error,
+        addFriendSuccess = addFriendSuccess,
         onAccept = { friendId -> viewModel.acceptFriendRequest(friendId) },
         onReject = { friendId -> viewModel.rejectFriendRequest(friendId) },
         onRemove = { friendId -> viewModel.removeFriend(friendId) },
         onAddFriend = { email -> viewModel.addFriend(email) },
+        onClearError = { viewModel.clearError() },
+        onResetAddFriendSuccess = { viewModel.resetAddFriendSuccess() },
         modifier = modifier
     )
 }
@@ -120,26 +133,41 @@ fun FriendsScreen(
 @Composable
 fun FriendsScreenContent(
     friends: Friends,
+    error: String?,
+    addFriendSuccess: Boolean,
     onReject: (String) -> Unit = {},
     onAccept: (String) -> Unit = {},
     onRemove: (String) -> Unit = {},
-    onDismissRequest: () -> Unit = {},
     onAddFriend: (String) -> Unit = {},
+    onClearError: () -> Unit = {},
+    onResetAddFriendSuccess: () -> Unit = {},
     modifier: Modifier
 ) {
     var isShowFriendsList by rememberSaveable { mutableStateOf(true) }
+    var isShowSentRequests by rememberSaveable { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var showAddFriendDialog by remember { mutableStateOf(false) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    LaunchedEffect(addFriendSuccess) {
+        if (addFriendSuccess) {
+            showAddFriendDialog = false
+            onResetAddFriendSuccess()
+        }
+    }
+
     if (showAddFriendDialog) {
         AddFriendDialog(
-            onDismissRequest = { showAddFriendDialog = false },
+            onDismissRequest = {
+                showAddFriendDialog = false
+                onClearError()
+                onResetAddFriendSuccess()
+            },
             onSendRequest = { email ->
                 onAddFriend(email)
-                showAddFriendDialog = false
-            }
+            },
+            errorMessage = error
         )
     }
 
@@ -182,7 +210,7 @@ fun FriendsScreenContent(
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { /* Handle search submit */ }),
+                keyboardActions = KeyboardActions(onSearch = { /* TODO Handle search submit */ }),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -231,25 +259,23 @@ fun FriendsScreenContent(
             Spacer(modifier = Modifier.height(10.dp))
 
             TabSelector(
-                isLeftSelected = isShowFriendsList,
-                onLeftClick = { isShowFriendsList = true },
-                onRightClick = { isShowFriendsList = false },
-                leftLabel = "Your Friends",
-                rightLabel = "Requests",
-                friendsCount = friends.friends.size,
-                requestsCount = friends.requestList.size
+                selectedTab = when {
+                    isShowFriendsList -> 0
+                    isShowSentRequests -> 2
+                    else -> 1
+                },
+                onTabClick = { index ->
+                    isShowFriendsList = index == 0
+                    isShowSentRequests = index == 2
+                },
+                labels = listOf("Your Friends", "Requests", "Sent Requests"),
+                counts = listOf(friends.friends.size, friends.requestList.size, friends.sentRequestList.size)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Animated Content
-            val listItems = if (isShowFriendsList) friends.friends else friends.requestList
-            val filteredItems = listItems.filter {
-                it.displayName.contains(searchText, ignoreCase = true)
-            }
-
             AnimatedContent(
-                targetState = isShowFriendsList,
+                targetState = if (isShowFriendsList) 0 else if (isShowSentRequests) 2 else 1,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)) +
                             slideInVertically(animationSpec = tween(300)) { it / 4 } togetherWith
@@ -257,15 +283,21 @@ fun FriendsScreenContent(
                             slideOutVertically(animationSpec = tween(300)) { -it / 4 }
                 },
                 label = "list_animation"
-            ) { isFriendMode ->
-                val listItems = if (isFriendMode) friends.friends else friends.requestList
+            ) { tabIndex ->
+                val listItems = when (tabIndex) {
+                    0 -> friends.friends
+                    1 -> friends.requestList
+                    2 -> friends.sentRequestList
+                    else -> emptyList()
+                }
                 val filteredItems = listItems.filter {
                     it.displayName.contains(searchText, ignoreCase = true)
                 }
 
                 if (filteredItems.isEmpty()) {
                     EmptyStateView(
-                        isFriendMode = isFriendMode,
+                        isFriendMode = tabIndex == 0,
+                        isSentRequestMode = tabIndex == 2,
                         hasSearchQuery = searchText.isNotEmpty()
                     )
                 } else {
@@ -280,7 +312,8 @@ fun FriendsScreenContent(
                         ) { item ->
                             FriendRequestItem(
                                 item = item,
-                                isFriendMode = isFriendMode,
+                                isFriendMode = tabIndex == 0,
+                                isSentRequestMode = tabIndex == 2,
                                 onAccept = { onAccept(item.documentId) },
                                 onReject = { onReject(item.documentId) },
                                 onRemove = { onRemove(item.documentId) },
@@ -297,7 +330,8 @@ fun FriendsScreenContent(
 @Composable
 fun AddFriendDialog(
     onDismissRequest: () -> Unit,
-    onSendRequest: (String) -> Unit
+    onSendRequest: (String) -> Unit,
+    errorMessage: String?
 ) {
     var email by remember { mutableStateOf("") }
 
@@ -314,7 +348,16 @@ fun AddFriendDialog(
                     label = { Text("Email") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { onSendRequest(email) })
+                    keyboardActions = KeyboardActions(onSend = { onSendRequest(email) }),
+                    isError = errorMessage != null,
+                    supportingText = {
+                        if (errorMessage != null) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
             }
         },
@@ -336,25 +379,30 @@ fun AddFriendDialog(
 
 @Composable
 fun TabSelector(
-    isLeftSelected: Boolean,
-    onLeftClick: () -> Unit,
-    onRightClick: () -> Unit,
-    leftLabel: String,
-    rightLabel: String,
-    friendsCount: Int,
-    requestsCount: Int,
+    selectedTab: Int,
+    onTabClick: (Int) -> Unit,
+    labels: List<String>,
+    counts: List<Int>,
     modifier: Modifier = Modifier
 ) {
+    var tabPositions by remember { mutableStateOf<List<Float>>(emptyList()) }
+    var tabWidths by remember { mutableStateOf<List<Dp>>(emptyList()) }
+
+    val density = LocalDensity.current
+
     val indicatorOffset by animateFloatAsState(
-        targetValue = if (isLeftSelected) 0f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "indicator"
+        targetValue = if (tabPositions.isNotEmpty() && selectedTab in tabPositions.indices) tabPositions[selectedTab] else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "indicatorOffset"
     )
 
-    BoxWithConstraints(
+    val indicatorWidth by animateDpAsState(
+        targetValue = if (tabWidths.isNotEmpty() && selectedTab in tabWidths.indices) tabWidths[selectedTab] else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "indicatorWidth"
+    )
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
@@ -364,16 +412,11 @@ fun TabSelector(
             )
             .padding(4.dp)
     ) {
-        val tabWidth = this.maxWidth / 2
-        val density = LocalDensity.current
-
-        val tabWidthPx = with(density) { tabWidth.toPx() }
-
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(tabWidth)
-                .offset { IntOffset((indicatorOffset * tabWidthPx).roundToInt(), 0) }
+                .width(indicatorWidth)
+                .offset { IntOffset(indicatorOffset.roundToInt(), 0) }
                 .background(
                     color = MaterialTheme.colorScheme.primary,
                     shape = RoundedCornerShape(12.dp)
@@ -381,21 +424,26 @@ fun TabSelector(
                 .shadow(4.dp, RoundedCornerShape(12.dp))
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            TabButton(
-                label = leftLabel,
-                count = friendsCount,
-                isSelected = isLeftSelected,
-                onClick = onLeftClick,
-                modifier = Modifier.weight(1f)
-            )
-            TabButton(
-                label = rightLabel,
-                count = requestsCount,
-                isSelected = !isLeftSelected,
-                onClick = onRightClick,
-                modifier = Modifier.weight(1f)
-            )
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            labels.forEachIndexed { index, label ->
+                TabButton(
+                    label = label,
+                    count = counts.getOrElse(index) { 0 },
+                    isSelected = selectedTab == index,
+                    onClick = { onTabClick(index) },
+                    modifier = Modifier
+                        .onGloballyPositioned { layoutCoordinates ->
+                            if (tabPositions.size <= index) {
+                                tabPositions = tabPositions + layoutCoordinates.positionInParent().x
+                                tabWidths = tabWidths + with(density) { layoutCoordinates.size.width.toDp() }
+                            }
+                        }
+                        .weight(1f)
+                )
+            }
         }
     }
 }
@@ -420,10 +468,11 @@ fun TabButton(
         modifier = modifier
             .fillMaxHeight()
             .clickable(
-                onClick = onClick,
+                interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -432,25 +481,22 @@ fun TabButton(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = textColor
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = textColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
             )
-            if (count > 0) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Badge(
-                    containerColor = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
-                    else
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                ) {
-                    Text(
-                        text = count.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = textColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            if (count > 0 && (label.compareTo("Requests") == 0)) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape
+                        )
+                )
             }
         }
     }
@@ -458,9 +504,10 @@ fun TabButton(
 
 @Composable
 fun EmptyStateView(
+    modifier: Modifier = Modifier,
     isFriendMode: Boolean,
-    hasSearchQuery: Boolean,
-    modifier: Modifier = Modifier
+    isSentRequestMode: Boolean = false,
+    hasSearchQuery: Boolean
 ) {
     Column(
         modifier = modifier
@@ -480,6 +527,7 @@ fun EmptyStateView(
             text = when {
                 hasSearchQuery -> "No matches found"
                 isFriendMode -> "No friends yet"
+                isSentRequestMode -> "No sent requests"
                 else -> "No pending requests"
             },
             style = MaterialTheme.typography.titleMedium,
@@ -491,6 +539,7 @@ fun EmptyStateView(
             text = when {
                 hasSearchQuery -> "Try a different search term"
                 isFriendMode -> "Add some friends to get started"
+                isSentRequestMode -> "You haven't sent any friend requests"
                 else -> "Friend requests will appear here"
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -502,15 +551,14 @@ fun EmptyStateView(
 
 @Composable
 fun FriendRequestItem(
+    modifier: Modifier = Modifier,
     item: Friend,
     isFriendMode: Boolean,
+    isSentRequestMode: Boolean = false,
     onAccept: () -> Unit,
     onReject: () -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
-
     Card(
         modifier = modifier.height(70.dp),
         colors = CardDefaults.cardColors(
@@ -528,7 +576,6 @@ fun FriendRequestItem(
                 .padding(vertical = 6.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar with border
             Box {
                 AsyncImage(
                     model = item.imageUrl,
@@ -555,35 +602,23 @@ fun FriendRequestItem(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                if (!isFriendMode) {
-                    Text(
-                        text = "Wants to be friends",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = when {
+                        isFriendMode -> "Friend"
+                        isSentRequestMode -> "Request sent"
+                        else -> "Wants to be friends"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(Modifier.width(8.dp))
 
-            if (isFriendMode) {
-                FilledTonalIconButton(
-                    onClick = onRemove,
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Remove friend"
-                    )
-                }
-
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when {
+                isFriendMode -> {
                     FilledTonalIconButton(
-                        onClick = onReject,
+                        onClick = onRemove,
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.error
@@ -591,20 +626,50 @@ fun FriendRequestItem(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Reject"
+                            contentDescription = "Remove friend"
                         )
                     }
-                    FilledIconButton(
-                        onClick = onAccept,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                }
+                isSentRequestMode -> {
+                    FilledTonalIconButton(
+                        onClick = onRemove,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Accept"
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel request"
                         )
+                    }
+                }
+                else -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalIconButton(
+                            onClick = onReject,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Reject"
+                            )
+                        }
+                        FilledIconButton(
+                            onClick = onAccept,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Accept"
+                            )
+                        }
                     }
                 }
             }
@@ -612,53 +677,53 @@ fun FriendRequestItem(
     }
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun FriendsScreenPreview() {
-    SafeHerTheme (darkTheme = false) {
-        FriendsScreenContent(
-            friends = Friends(
-                friends = listOf(
-                    Friend(
-                        id = "1",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John Doe",
-                    ),
-                    Friend(
-                        id = "3",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John Doe",
-                    ),
-                    Friend(
-                        id = "4",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John hh",
-                    ),
-                    Friend(
-                        id = "5",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John hh",
-                    ),
-                    Friend(
-                        id = "6",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John hh",
-                    ),
-                    Friend(
-                        id = "7",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "John hh",
-                    ),
-                    ),
-                requestList = listOf(
-                    Friend(
-                        id = "2",
-                        imageUrl = "https://example.com/avatar1.jpg",
-                        displayName = "666",
-                    )
-                )
-            ),
-            modifier = Modifier
-        )
-    }
-}
+//@Preview(showSystemUi = true)
+//@Composable
+//fun FriendsScreenPreview() {
+//    SafeHerTheme (darkTheme = false) {
+//        FriendsScreenContent(
+//            friends = Friends(
+//                friends = listOf(
+//                    Friend(
+//                        id = "1",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John Doe",
+//                    ),
+//                    Friend(
+//                        id = "3",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John Doe",
+//                    ),
+//                    Friend(
+//                        id = "4",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John hh",
+//                    ),
+//                    Friend(
+//                        id = "5",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John hh",
+//                    ),
+//                    Friend(
+//                        id = "6",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John hh",
+//                    ),
+//                    Friend(
+//                        id = "7",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "John hh",
+//                    ),
+//                    ),
+//                requestList = listOf(
+//                    Friend(
+//                        id = "2",
+//                        imageUrl = "https://example.com/avatar1.jpg",
+//                        displayName = "666",
+//                    )
+//                )
+//            ),
+//            modifier = Modifier
+//        )
+//    }
+//}

@@ -11,5 +11,6 @@ data class LiveLocation(
     val location: GeoPoint? = null,
     val isSharing: Boolean = false,
     @ServerTimestamp
-    val lastUpdated: Date? = null
+    val lastUpdated: Date? = null,
+    val sharedWith: List<String> = emptyList()
 )
