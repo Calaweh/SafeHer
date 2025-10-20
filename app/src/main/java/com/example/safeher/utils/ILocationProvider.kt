@@ -1,4 +1,4 @@
-package com.example.safeher.data.utils
+package com.example.safeher.utils
 
 import android.location.Location
 import kotlinx.coroutines.flow.Flow

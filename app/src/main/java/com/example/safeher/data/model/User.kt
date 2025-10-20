@@ -7,11 +7,11 @@ import java.util.Date
 
 data class User(
     @DocumentId val id: String = "",
-    val email: String = "",
-    val imageUrl: String = "",
-    val displayName: String = "",
-    val anonymous: Boolean = true,
-    @get:ServerTimestamp val deletedAt: Date? = null
+    @PropertyName("email") val email: String = "",
+    @PropertyName("imageUrl") val imageUrl: String = "",
+    @PropertyName("displayName") val displayName: String = "",
+    @PropertyName("anonymous") val anonymous: Boolean = true,
+    @PropertyName("deletedAt") val deletedAt: Date? = null
 ) {
     constructor() : this("", "", "", "", true, null)
 }

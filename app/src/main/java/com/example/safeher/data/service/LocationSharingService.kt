@@ -22,7 +22,7 @@ import com.example.safeher.data.datasource.UserDataSource
 import com.example.safeher.data.model.LocationSharingState
 import com.example.safeher.data.model.SharingMode
 import com.example.safeher.data.repository.LocationSharingRepository
-import com.example.safeher.data.utils.ILocationProvider
+import com.example.safeher.utils.ILocationProvider
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
@@ -48,18 +48,21 @@ class LocationSharingService : LifecycleService() {
         const val EXTRA_DURATION_MINUTES = "EXTRA_DURATION_MINUTES"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "location_sharing_channel"
+        const val EXTRA_SHARED_WITH_IDS = "EXTRA_SHARED_WITH_IDS"
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        val sharedWithIds = intent?.getStringArrayListExtra(EXTRA_SHARED_WITH_IDS) ?: emptyList()
+
         when (intent?.action) {
             ACTION_START_INSTANT -> {
                 val duration = intent.getLongExtra(EXTRA_DURATION_MINUTES, 0L)
-                startInstantSharing(duration)
+                startInstantSharing(duration, sharedWithIds)
             }
             ACTION_START_DELAYED -> {
                 val delay = intent.getLongExtra(EXTRA_DURATION_MINUTES, 0L)
-                startDelayedSharing(delay)
+                startDelayedSharing(delay, sharedWithIds)
             }
             ACTION_STOP -> {
                 stopServiceAndSharing()
@@ -68,14 +71,14 @@ class LocationSharingService : LifecycleService() {
         return START_STICKY
     }
 
-    private fun startInstantSharing(durationMinutes: Long) {
+    private fun startInstantSharing(durationMinutes: Long, sharedWithIds: List<String>) {
 
         Log.d("LocationSharingService","start instant location sharing")
 
         stopCurrentTask()
         val durationMillis = TimeUnit.MINUTES.toMillis(durationMinutes)
 
-        startLocationUpdates()
+        startLocationUpdates(sharedWithIds)
 
         timer = object : CountDownTimer(durationMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
@@ -90,7 +93,7 @@ class LocationSharingService : LifecycleService() {
         }.start()
     }
 
-    private fun startDelayedSharing(delayMinutes: Long) {
+    private fun startDelayedSharing(delayMinutes: Long, sharedWithIds: List<String>) {
 
         Log.d("LocationSharingService","start delayed location sharing")
 
@@ -105,7 +108,7 @@ class LocationSharingService : LifecycleService() {
                 startForeground(NOTIFICATION_ID, createNotification())
             }
             override fun onFinish() {
-                startLocationUpdates()
+                startLocationUpdates(sharedWithIds)
                 repository.updateState(
                     LocationSharingState(SharingMode.SHARING, 0, 0)
                 )
@@ -114,7 +117,7 @@ class LocationSharingService : LifecycleService() {
         }.start()
     }
 
-    private fun startLocationUpdates() {
+    private fun startLocationUpdates(sharedWithIds: List<String>) {
 
         Log.d("LocationSharingService", "startLocationUpdates called")
 
@@ -134,7 +137,8 @@ class LocationSharingService : LifecycleService() {
                         displayName = user.displayName,
                         imageUrl = user.imageUrl,
                         lat = location.latitude,
-                        lon = location.longitude
+                        lon = location.longitude,
+                        sharedWithFriendIds = sharedWithIds
                     )
                 }
             } catch (e: Exception) {

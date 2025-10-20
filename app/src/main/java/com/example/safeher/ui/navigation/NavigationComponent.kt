@@ -45,6 +45,7 @@ import com.example.safeher.ui.explore.ExploreScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.safeher.ui.friends.FriendsScreen
+import com.example.safeher.ui.me.MeScreen
 import com.example.safeher.ui.resource.AIChat
 import com.example.safeher.ui.resource.ResourceHubScreen
 
@@ -214,7 +215,7 @@ private fun AppScaffold(
         }
     }
 
-    val mainNavigationScreens = listOf(Screen.Explore) // The Screens that should show in bottom tabs
+    val mainNavigationScreens = listOf(Screen.Explore, Screen.CheckIn, Screen.ResourcesHub, Screen.Friends, Screen.Profile) // The Screens that should show in bottom tabs
 
     val showMainNavigationUi = currentScreen in mainNavigationScreens && !showSplash
     val canPop = navController.previousBackStackEntry != null
@@ -321,13 +322,8 @@ private fun AppScaffold(
                 ExploreScreen(navController = navController)
             }
             composable(Screen.Friends.name) {
-                // TODO: Create FriendsScreen
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Friends Screen")
-                }
+                FriendsScreen()
             }
-
-            Log.d("NavRoute", "Navigating to route: ${Screen.ResourcesHub.name}")
             composable(Screen.ResourcesHub.name) {
                 ResourceHubScreen(
                     onStartChat = { navController.navigate("chat") }
@@ -339,10 +335,23 @@ private fun AppScaffold(
                 )
             }
             composable(Screen.Profile.name) {
-                // TODO: Create ProfileScreen
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Profile Screen")
-                }
+                val navigationViewModel: NavigationViewModel = hiltViewModel()
+                MeScreen(
+                    onAccountDeleted = {
+                        navController.navigate(Screen.SignIn.name) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    onSignOutClick = {
+                            navigationViewModel.signOut()
+                            navController.navigate(Screen.SignIn.name) {
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            }
+                    }
+                )
             }
             composable(Screen.Map.name) {
                 // TODO: Create MapScreen
