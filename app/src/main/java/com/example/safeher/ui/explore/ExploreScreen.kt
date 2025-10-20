@@ -5,6 +5,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -12,29 +14,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.safeher.ui.checkin.CheckInScreen
+import com.example.safeher.ui.checkin.CheckInScreenContent
+import com.example.safeher.ui.checkin.CheckInViewModel
+import com.example.safeher.ui.map.MapViewModel
 import com.example.safeher.ui.navigation.Screen
 
 @Composable
-fun ExploreScreen(navController: NavController) {
-    // The main layout for the screen
+fun ExploreScreen(
+    navController: NavController
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Section for the main emergency buttons
         EmergencySection(navController)
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // You can add other cards here for features not in the bottom nav, like the Map
-        FeatureCard(
-            title = "Map",
-            icon = Icons.Default.Map,
-            onClick = { navController.navigate(Screen.Map.name) }
-        )
+        CheckInScreen()
     }
 }
 

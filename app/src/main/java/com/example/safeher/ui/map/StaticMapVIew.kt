@@ -3,8 +3,10 @@ package com.example.safeher.ui.map
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Message
 import android.util.Log
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -24,7 +26,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.safeher.data.model.LiveLocation
 import androidx.compose.runtime.key
 
-private const val TAG = "StaticMapPreview" // Tag for filtering logs
+private const val TAG = "StaticMapPreview"
 
 @Composable
 fun StaticMapPreview(
@@ -32,8 +34,6 @@ fun StaticMapPreview(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-
-    // Log the initial location data received by the composable
     Log.d(TAG, "Composable recomposed. Location: $location")
 
     val locationKey = remember(location) {
@@ -70,6 +70,25 @@ fun StaticMapPreview(
                         display: block;
                     }
                 </style>
+                <script>
+                    function setupLinkHandler() {
+                        try {
+                            const iframe = document.querySelector('iframe');
+                            if (iframe && iframe.contentWindow) {
+                                iframe.contentWindow.addEventListener('click', function(event) {
+                                    const link = event.target.closest('a');
+                                    if (link && link.href && link.href.startsWith('intent://')) {
+                                        window.android.onLinkClicked(link.href);
+                                        event.preventDefault();
+                                    }
+                                }, true);
+                            }
+                        } catch (e) {
+                            console.error('Error accessing iframe: ', e);
+                        }
+                    }
+                    window.addEventListener('load', setupLinkHandler);
+                </script>
             </head>
             <body>
                 <iframe
@@ -109,11 +128,92 @@ fun StaticMapPreview(
                                     domStorageEnabled = true
                                     loadWithOverviewMode = true
                                     useWideViewPort = true
+                                    setSupportMultipleWindows(true)
+                                    allowFileAccess = true
+                                    allowContentAccess = true
                                 }
+                                addJavascriptInterface(object {
+                                    @JavascriptInterface
+                                    fun onLinkClicked(href: String) {
+                                        Log.d(TAG, "JavaScript interface received link: $href")
+                                        if (href.startsWith("intent://")) {
+                                            try {
+                                                val intentUri = Uri.parse(href)
+                                                val query = intentUri.getQueryParameter("q")
+                                                Log.d(TAG, "Extracted query parameter: $query")
+                                                if (query != null) {
+                                                    val latLon = query.split(",").map { it.toDoubleOrNull() }
+                                                    if (latLon.size == 2 && latLon[0] != null && latLon[1] != null) {
+                                                        val lat = latLon[0]!!
+                                                        val lon = latLon[1]!!
+                                                        Log.d(TAG, "Launching map with lat: $lat, lon: $lon")
+                                                        val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lon?q=$lat,$lon"))
+                                                        mapIntent.setPackage("com.google.android.apps.maps")
+                                                        context.startActivity(mapIntent)
+                                                    } else {
+                                                        Log.w(TAG, "Invalid lat/lon in query: $query")
+                                                    }
+                                                }
+                                                // Fallback to original location
+                                                val fallbackLat = location.location.latitude
+                                                val fallbackLon = location.location.longitude
+                                                Log.d(TAG, "Falling back to original location: lat=$fallbackLat, lon=$fallbackLon")
+                                                val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$fallbackLat,$fallbackLon?q=$fallbackLat,$fallbackLon"))
+                                                mapIntent.setPackage("com.google.android.apps.maps")
+                                                context.startActivity(mapIntent)
+                                            } catch (e: Exception) {
+                                                Log.e(TAG, "Error handling intent URL: ${e.message}", e)
+                                                Toast.makeText(context, "Failed to open map. Please install Google Maps.", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    }
+                                }, "android")
                                 webViewClient = object : WebViewClient() {
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
                                         Log.d(TAG, "WebView page finished loading: $url")
+                                    }
+
+                                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                                        Log.d(TAG, "Attempting to override URL loading: $url")
+                                        if (url?.startsWith("intent://") == true) {
+                                            Log.d(TAG, "Intercepting intent URL: $url")
+                                            return true
+                                        }
+                                        return false
+                                    }
+                                }
+
+                                webChromeClient = object : android.webkit.WebChromeClient() {
+                                    override fun onCreateWindow(
+                                        view: WebView?,
+                                        isDialog: Boolean,
+                                        isUserGesture: Boolean,
+                                        resultMsg: Message?
+                                    ): Boolean {
+                                        Log.d(TAG, "New window creation attempted - opening Google Maps")
+
+                                        // Open Google Maps with the location
+                                        val lat = location.location.latitude
+                                        val lon = location.location.longitude
+                                        val mapIntent = Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse("geo:$lat,$lon?q=$lat,$lon")
+                                        )
+                                        mapIntent.setPackage("com.google.android.apps.maps")
+
+                                        try {
+                                            context.startActivity(mapIntent)
+                                        } catch (e: ActivityNotFoundException) {
+                                            Log.e(TAG, "Google Maps not installed", e)
+                                            Toast.makeText(
+                                                context,
+                                                "Google Maps app not installed.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+
+                                        return true
                                     }
                                 }
                                 layoutParams = ViewGroup.LayoutParams(
@@ -124,7 +224,6 @@ fun StaticMapPreview(
                         },
                         update = { webView ->
                             Log.d(TAG, "WebView update called. Loading data.")
-                            // Force reload when mapHtml changes
                             webView.loadDataWithBaseURL(
                                 "https://www.google.com",
                                 mapHtml,
@@ -140,11 +239,9 @@ fun StaticMapPreview(
                     onClick = {
                         val lat = location.location.latitude
                         val lon = location.location.longitude
-
                         val intentUri = Uri.parse("google.navigation:q=$lat,$lon")
                         val mapIntent = Intent(Intent.ACTION_VIEW, intentUri)
                         mapIntent.setPackage("com.google.android.apps.maps")
-
                         try {
                             context.startActivity(mapIntent)
                         } catch (e: ActivityNotFoundException) {

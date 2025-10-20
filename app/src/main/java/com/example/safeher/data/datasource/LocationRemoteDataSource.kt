@@ -18,7 +18,7 @@ class LocationRemoteDataSource @Inject constructor(
         private const val LOCATION_COLLECTION = "live_locations"
     }
 
-    suspend fun updateUserLocation(userId: String, displayName: String, imageUrl: String, lat: Double, lon: Double) {
+    suspend fun updateUserLocation(userId: String, displayName: String, imageUrl: String, lat: Double, lon: Double, sharedWithFriendIds: List<String>) {
         Log.d("LocationRemoteDataSource","updating user location")
         val locationDoc = firestore.collection(LOCATION_COLLECTION).document(userId)
         val locationData = mapOf(
@@ -27,7 +27,8 @@ class LocationRemoteDataSource @Inject constructor(
             "imageUrl" to imageUrl,
             "location" to GeoPoint(lat, lon),
             "isSharing" to true,
-            "lastUpdated" to FieldValue.serverTimestamp()
+            "lastUpdated" to FieldValue.serverTimestamp(),
+            "sharedWith" to sharedWithFriendIds
         )
         locationDoc.set(locationData).await()
     }
