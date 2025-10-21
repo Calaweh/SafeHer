@@ -3,16 +3,18 @@ package com.example.safeher.ui.resource
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
@@ -26,40 +28,63 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+// Data class for hotlines
+data class Hotline(
+    val id: String,
+    val title: String,
+    val number: String,
+    val description: String,
+    val category: HotlineCategory
+)
+
+enum class HotlineCategory(val displayName: String, val color: Color) {
+    EMERGENCY("Emergency", Color(0xFFD32F2F)),
+    MENTAL_HEALTH("Mental Health", Color(0xFFFF6F00)),
+    SUPPORT("Support Services", Color(0xFF7B1FA2)),
+    CYBER("Cyber Security", Color(0xFF1976D2)),
+    MEDICAL("Medical", Color(0xFFC62828))
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResourceHubScreen(
-    onStartChat: () -> Unit = {}
+    onStartChat: () -> Unit = {},
+    viewModel: ResourceHubViewModel = viewModel() // Inject the ViewModel
 ) {
     val scrollState = rememberScrollState()
     val alertRed = Color(0xFFD32F2F)
 
+    // Collect state from the ViewModel. The UI will automatically recompose when these change.
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val filteredHotlines by viewModel.filteredHotlines.collectAsState()
+
+    // Derive UI-specific lists from the collected state
+    val favoriteHotlines = filteredHotlines.filter { favoriteIds.contains(it.id) }
+    val otherHotlines = filteredHotlines.filter { !favoriteIds.contains(it.id) }
+
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            // Floating AI Chat Button
             FloatingActionButton(
                 onClick = onStartChat,
                 containerColor = Color(0xFF667EEA),
-                contentColor = Color.White,
-                modifier = Modifier.size(64.dp)
+                contentColor = Color.White
             ) {
-                Icon(
-                    imageVector = Icons.Default.SmartToy,
-                    contentDescription = "AI Chat",
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(imageVector = Icons.Default.SmartToy, contentDescription = "AI Chat")
             }
-        }
+        },
+        containerColor = Color(0xFFF5F7FA)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F7FA))
                 .verticalScroll(scrollState)
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             // Emergency Alert Banner
             Card(
@@ -162,92 +187,120 @@ fun ResourceHubScreen(
                 }
             }
 
-            // Emergency Hotlines Section
-            Text(
-                text = "Emergency Hotlines",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = alertRed,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.onSearchQueryChanged(it) },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                placeholder = { Text("Search hotlines...", fontSize = 14.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                            Icon(Icons.Default.Clear, "Clear")
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = Color(0xFF667EEA),
+                    unfocusedBorderColor = Color(0xFFE2E8F0)
+                ),
+                singleLine = true
             )
 
-            HotlineItem(
-                title = "Police",
-                number = "000111",
-                description = "For immediate police assistance in cases of crime, assault, or danger.",
-                alertRed = alertRed
+            val categories = listOf(
+                "All" to null,
+                HotlineCategory.EMERGENCY.displayName to HotlineCategory.EMERGENCY,
+                HotlineCategory.MEDICAL.displayName to HotlineCategory.MEDICAL,
+                HotlineCategory.MENTAL_HEALTH.displayName to HotlineCategory.MENTAL_HEALTH,
+                HotlineCategory.SUPPORT.displayName to HotlineCategory.SUPPORT,
+                HotlineCategory.CYBER.displayName to HotlineCategory.CYBER
             )
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories) { (label, category) ->
+                    FilterChip(
+                        selected = selectedCategory == category,
+                        onClick = { viewModel.onCategorySelected(category) },
+                        label = { Text(label, fontSize = 12.sp) },
+                        leadingIcon = if (selectedCategory == category) {
+                            { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
+                        } else null
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Favorites Section
+            if (favoriteHotlines.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFA000))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Favorites", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                favoriteHotlines.forEach { hotline ->
+                    HotlineItem(
+                        hotline = hotline,
+                        isFavorite = true,
+                        onFavoriteToggle = { viewModel.onFavoriteToggle(hotline.id) }
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+            }
 
-            HotlineItem(
-                title = "Ambulance Emergency",
-                number = "000222",
-                description = "Call for urgent medical help or to request an ambulance during health-related emergencies.",
-                alertRed = alertRed
-            )
+            // Other Hotlines Section
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (favoriteHotlines.isEmpty() && selectedCategory == null) "All Hotlines" else "Results",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2D3748)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (filteredHotlines.isEmpty()) {
+                Text(
+                    text = "No results found.",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally)
+                )
+            } else {
+                otherHotlines.forEach { hotline ->
+                    HotlineItem(
+                        hotline = hotline,
+                        isFavorite = false,
+                        onFavoriteToggle = { viewModel.onFavoriteToggle(hotline.id) }
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
 
-            HotlineItem(
-                title = "Mental Health Line",
-                number = "000333",
-                description = "Provides confidential emotional support and mental health counseling for those in distress or crisis.",
-                alertRed = alertRed
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HotlineItem(
-                title = "Women's Aid Organisation",
-                number = "000444",
-                description = "Offers support, counseling, and shelter for women experiencing domestic violence or abuse.",
-                alertRed = alertRed
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HotlineItem(
-                title = "Talian Kasih",
-                number = "000555",
-                description = "Government helpline offering support for family, welfare, child protection, and community issues.",
-                alertRed = alertRed
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HotlineItem(
-                title = "CyberSecurity Malaysia",
-                number = "000666",
-                description = "Report online scams, cyberbullying, hacking, or other internet security issues to protect yourself online.",
-                alertRed = alertRed
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HotlineItem(
-                title = "AADK (Anti-Drugs Agency)",
-                number = "000777",
-                description = "Provides assistance for drug-related problems, rehabilitation information, and counseling services.",
-                alertRed = alertRed
-            )
-
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(Modifier.height(60.dp))
         }
     }
 }
 
+
 @Composable
 fun HotlineItem(
-    title: String,
-    number: String,
-    description: String,
-    alertRed: Color
+    hotline: Hotline,
+    isFavorite: Boolean,
+    onFavoriteToggle: () -> Unit
 ) {
     val context = LocalContext.current
-    val expanded = remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -255,100 +308,64 @@ fun HotlineItem(
             .clickable(
                 indication = rememberRipple(),
                 interactionSource = remember { MutableInteractionSource() }
-            ) { expanded.value = !expanded.value }
+            ) { expanded = !expanded }
             .animateContentSize(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(3.dp),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isFavorite) Color(0xFFFFF9E6) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(10.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Color(0xFF2D3748),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-
-                Icon(
-                    imageVector = if (expanded.value)
-                        Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded.value) "Collapse" else "Expand",
-                    tint = Color(0xFF718096)
-                )
-            }
-
-            if (expanded.value) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = description,
-                    fontSize = 14.sp,
-                    color = Color(0xFF4A5568),
-                    lineHeight = 20.sp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Call Button
-                Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = alertRed),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(hotline.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(hotline.category.displayName, fontSize = 11.sp, color = hotline.category.color)
+                }
+                IconButton(onClick = onFavoriteToggle) {
                     Icon(
-                        imageVector = Icons.Default.Call,
-                        contentDescription = "Call",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Call $number",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
+                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Default.StarBorder,
+                        contentDescription = "Toggle Favorite",
+                        tint = if (isFavorite) Color(0xFFFFA000) else Color.Gray
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // SMS Button
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand/Collapse"
+                )
+            }
+            if (expanded) {
+                Spacer(Modifier.height(10.dp))
+                Text(hotline.description, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${hotline.number}"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = hotline.category.color),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Call, "Call", modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Call ${hotline.number}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number"))
+                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${hotline.number}"))
                         intent.putExtra("sms_body", "I need help.")
                         context.startActivity(intent)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = alertRed
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = hotline.category.color),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, hotline.category.color.copy(alpha = 0.5f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = "Message",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Send Emergency SMS",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Icon(Icons.Default.Email, "Message", modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Send Emergency SMS", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
