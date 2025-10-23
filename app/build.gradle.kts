@@ -16,6 +16,30 @@ android {
     namespace = "com.example.safeher"
     compileSdk = 36
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("safeher.jks")
+            keyAlias = "safeher"
+            keyPassword = "109zyx"
+            storePassword = "109zyx"
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = true
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.safeher"
         minSdk = 26
