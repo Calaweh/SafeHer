@@ -24,6 +24,7 @@ import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.model.LocationSharingState
 import com.example.safeher.data.model.SharingMode
 import com.example.safeher.ui.map.MapViewModel
+import com.example.safeher.ui.map.StaticHmsMapPreview
 import com.example.safeher.ui.map.StaticMapPreview
 import com.example.safeher.ui.theme.SafeHerTheme
 import com.google.accompanist.permissions.*
@@ -471,7 +472,7 @@ fun CheckInScreenContent(
                 val firstFriendLocation = friendLocations.first()
 
                 Log.d("CheckInScreenContent", "showing static map preview")
-                StaticMapPreview(
+                StaticHmsMapPreview(
                     location = firstFriendLocation,
                     modifier = Modifier.padding(top = 8.dp)
                 )

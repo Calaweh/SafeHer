@@ -129,7 +129,6 @@ fun ResourceHubScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
                     .clickable(
-                        indication = rememberRipple(),
                         interactionSource = remember { MutableInteractionSource() }
                     ) {
                         onStartChat()
@@ -306,7 +305,6 @@ fun HotlineItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
-                indication = rememberRipple(),
                 interactionSource = remember { MutableInteractionSource() }
             ) { expanded = !expanded }
             .animateContentSize(),

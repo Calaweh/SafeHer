@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keep class com.huawei.hms.maps.** { *; }
+-keep interface com.huawei.hms.maps.** { *; }
+-keep class com.huawei.hms.maps.model.** { *; }
+-keep interface com.huawei.hms.maps.model.** { *; }
+-dontwarn com.huawei.hms.maps.**

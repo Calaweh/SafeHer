@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,7 +7,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
-
+    alias(libs.plugins.compose.compiler)
+    id("com.huawei.agconnect")
     id("kotlin-parcelize")
 }
 
@@ -40,14 +43,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.13"
     }
     packaging {
         resources {
@@ -121,12 +123,12 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
 
     // tmp GMS
-    implementation("com.google.maps.android:maps-compose:2.11.4")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation("com.google.maps.android:maps-compose:2.11.4")
-//    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation(libs.maps.compose)
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     // HMS
-//    implementation("com.huawei.hms:maps:6.10.0.300")
-//    implementation("com.huawei.hms.maps.compose:maps-compose:1.0.0")
+    implementation(libs.huawei.hms.maps)
+//    implementation(libs.huawei.hms.maps.compose)
+    implementation(libs.huawei.agconnect.core)
+    implementation(libs.dynamicability)
 }
