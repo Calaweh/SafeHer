@@ -71,7 +71,7 @@ fun StaticMapPreview(
                     }
                 </style>
                 <script>
-                    function setupLinkHandler() {
+                    function setupLinkHandler() {X  
                         try {
                             const iframe = document.querySelector('iframe');
                             if (iframe && iframe.contentWindow) {

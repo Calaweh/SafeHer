@@ -6,9 +6,8 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
-import com.google.firebase.perf.ktx.trace
-import com.google.firebase.remoteconfig.get
 import com.google.firebase.perf.FirebasePerformance
+import com.google.firebase.perf.trace
 
 class FirestoreConfigurationService @Inject constructor() : ConfigurationService
 {

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -24,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.safeher.data.model.Friend
-import kotlin.collections.forEach
 
 @Composable
 fun FriendSelectionDialog(
@@ -55,7 +53,6 @@ fun FriendSelectionDialog(
                                 .fillMaxWidth()
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = rememberRipple(bounded = true),
                                     onClick = {
                                         selectedFriendIds = if (selectedFriendIds.contains(friend.id)) {
                                             selectedFriendIds - friend.id

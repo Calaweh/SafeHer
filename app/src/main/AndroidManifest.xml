@@ -5,9 +5,17 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="com.huawei.appmarket.service.commondata.permission.GET_COMMON_DATA" />
+
+    <queries>
+        <package android:name="com.huawei.hwid" />
+        <package android:name="com.huawei.appmarket" />
+    </queries>
 
     <application
         android:name=".SafeHerApplication"
@@ -30,7 +38,13 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".data.service.LocationSharingService" android:foregroundServiceType="location" />
+        <service
+            android:name=".data.service.LocationSharingService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+        <meta-data
+            android:name="com.huawei.hms.maps.api_key"
+            android:value="DgEDADECaluZSQg97ljDr5L7mWEB2dnpdZfnKhmW7KYY0XiK7B6arrz+T+QraG7a7a/ZFMlX1bksd7hahKFIp6lrxrjKZsSsYlFEiA==" />
 
     </application>
 
