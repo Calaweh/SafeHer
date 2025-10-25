@@ -1,12 +1,12 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
 import com.google.firebase.Firebase
 import com.google.firebase.crashlytics.crashlytics
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import com.example.safeher.R
 
 open class MainViewModel : ViewModel() {
     fun launchCatching(

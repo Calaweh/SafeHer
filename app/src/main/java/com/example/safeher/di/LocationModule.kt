@@ -1,8 +1,8 @@
 package com.example.safeher.di
 
-import com.example.safeher.utils.ILocationProvider
 //import com.example.safeher.utils.GmsLocationProvider
 import com.example.safeher.utils.HmsLocationProvider
+import com.example.safeher.utils.ILocationProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
