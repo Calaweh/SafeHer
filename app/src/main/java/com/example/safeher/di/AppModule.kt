@@ -9,6 +9,7 @@ import coil.util.DebugLogger
 import com.example.safeher.BuildConfig
 import com.example.safeher.data.datasource.MediaRemoteDataSource
 import com.example.safeher.data.extensions.FirestoreImageFetcher
+import com.google.ai.client.generativeai.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import dagger.Module
 import dagger.Provides
