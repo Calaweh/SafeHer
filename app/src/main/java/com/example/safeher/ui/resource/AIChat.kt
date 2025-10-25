@@ -34,9 +34,12 @@ fun AIChat(
     onBackClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    val viewModel: AIChatViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     var message by remember { mutableStateOf(TextFieldValue("")) }
-    var messages by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
-    var isTyping by remember { mutableStateOf(false) }
+
+    val messages by viewModel.messages.collectAsState()
+    val isTyping by viewModel.isTyping.collectAsState()
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -46,11 +49,6 @@ fun AIChat(
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
-    }
-
-    // Welcome message
-    LaunchedEffect(Unit) {
-        messages = listOf("Hi! 👋 I'm your AI assistant. How can I help you today?" to false)
     }
 
     Scaffold(
@@ -197,21 +195,8 @@ fun AIChat(
                     FloatingActionButton(
                         onClick = {
                             if (message.text.isNotBlank()) {
-                                // Add user message
-                                messages = messages + (message.text to true)
-                                val userMessage = message.text
+                                viewModel.sendMessage(message.text)
                                 message = TextFieldValue("")
-
-                                // Simulate AI typing
-                                coroutineScope.launch {
-                                    isTyping = true
-                                    delay(1500)
-                                    isTyping = false
-
-                                    // Simulate AI response
-                                    val response = generateSimpleResponse(userMessage)
-                                    messages = messages + (response to false)
-                                }
                             }
                         },
                         containerColor = if (message.text.isNotBlank()) {
