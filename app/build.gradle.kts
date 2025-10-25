@@ -53,15 +53,16 @@ android {
         }
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
+//    buildTypes {
+//        release {
+//            isMinifyEnabled = false
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
+//        }
+//    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -78,6 +79,15 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
         }
     }
 }
@@ -147,12 +157,15 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
 
     // tmp GMS
-    implementation(libs.maps.compose)
-    implementation("com.google.android.gms:play-services-location:21.2.0")
+//    implementation(libs.maps.compose)
+//    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     // HMS
     implementation(libs.huawei.hms.maps)
 //    implementation(libs.huawei.hms.maps.compose)
     implementation(libs.huawei.agconnect.core)
-    implementation(libs.dynamicability)
+//    implementation(libs.dynamicability)
+    implementation(libs.location)
+    implementation(libs.base)
+
 }

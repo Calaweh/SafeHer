@@ -1,6 +1,9 @@
 package com.example.safeher.ui.explore
 
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,9 +29,12 @@ import com.example.safeher.ui.navigation.Screen
 fun ExploreScreen(
     navController: NavController
 ) {
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

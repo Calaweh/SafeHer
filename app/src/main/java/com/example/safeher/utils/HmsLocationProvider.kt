@@ -1,19 +1,22 @@
-package com.example.safeher.data.utils
+package com.example.safeher.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
 import android.util.Log
-import com.example.safeher.utils.ILocationProvider
-import com.google.android.gms.location.*
+import com.huawei.hms.location.FusedLocationProviderClient
+import com.huawei.hms.location.LocationCallback
+import com.huawei.hms.location.LocationRequest
+import com.huawei.hms.location.LocationResult
+import com.huawei.hms.location.LocationServices
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 
-class GmsLocationProvider @Inject constructor(
+class HmsLocationProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ILocationProvider {
 
@@ -23,13 +26,13 @@ class GmsLocationProvider @Inject constructor(
     @SuppressLint("MissingPermission")
     override fun getLocationUpdates(): Flow<Location> = callbackFlow {
 
-        Log.d("GmsLocationProvider","getting location updates")
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            10000L
-        ).apply {
-            setMinUpdateIntervalMillis(5000L)
-        }.build()
+        Log.d("HmsLocationProvider", "getting location updates")
+
+        val locationRequest = LocationRequest.create().apply {
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            interval = 10000L
+            fastestInterval = 5000L
+        }
 
         val locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
@@ -46,6 +49,7 @@ class GmsLocationProvider @Inject constructor(
         )
 
         awaitClose {
+            Log.d("HmsLocationProvider", "stopping location updates")
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
     }

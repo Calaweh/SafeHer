@@ -1,20 +1,23 @@
 package com.example.safeher.ui.checkin
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -23,23 +26,29 @@ import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.model.LocationSharingState
 import com.example.safeher.data.model.SharingMode
+import com.example.safeher.ui.map.FriendTrackingInfo
+import com.example.safeher.ui.map.FriendsLocationDialog
 import com.example.safeher.ui.map.MapViewModel
 import com.example.safeher.ui.map.StaticHmsMapPreview
 import com.example.safeher.ui.map.StaticMapPreview
+import com.example.safeher.ui.map.UiState
 import com.example.safeher.ui.theme.SafeHerTheme
 import com.google.accompanist.permissions.*
+import com.huawei.hms.api.ConnectionResult
+import com.huawei.hms.api.HuaweiApiAvailability
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun LocationSharingSection(
     sharingState: LocationSharingState,
     friends: List<Friend>,
+    permissionState: MultiplePermissionsState,
     arePermissionsGranted: Boolean,
-    onRequestPermissions: () -> Unit,
     onStartInstant: (Long, List<String>) -> Unit,
     onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit
 ) {
+    val context = LocalContext.current
     var showTimerDialog by remember { mutableStateOf(false) }
     var showFriendDialog by remember { mutableStateOf(false) }
     var shareMode by remember { mutableStateOf<ShareMode?>(null) }
@@ -93,12 +102,22 @@ fun LocationSharingSection(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            { if (arePermissionsGranted) {
-                                shareMode = ShareMode.INSTANT
-                                showTimerDialog = true
-                            } else {
-                                onRequestPermissions()
-                            }
+                            onClick = {
+                                Log.d("LocationSharing", "Share Now button CLICKED!")
+                                if (arePermissionsGranted) {
+                                    shareMode = ShareMode.INSTANT
+                                    showTimerDialog = true
+                                } else {
+
+                                    if (permissionState.shouldShowRationale) {
+                                        permissionState.launchMultiplePermissionRequest()
+                                    } else if (!permissionState.allPermissionsGranted) {
+                                        Toast.makeText(context, "Enable permissions in Settings > Apps > safeher", Toast.LENGTH_LONG).show()
+                                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.fromParts("package", context.packageName, null)
+                                        })
+                                    }
+                                }
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -113,11 +132,14 @@ fun LocationSharingSection(
 
                         OutlinedButton(
                             onClick = {
-                                if (arePermissionsGranted) {
-                                    shareMode = ShareMode.DELAYED
-                                    showTimerDialog = true
-                                } else {
-                                    onRequestPermissions()
+                                Log.d("LocationSharing", "Share Later CLICKED! Permissions granted: $arePermissionsGranted")
+                                if (permissionState.shouldShowRationale) {
+                                    permissionState.launchMultiplePermissionRequest()
+                                } else if (!permissionState.allPermissionsGranted) {
+                                    Toast.makeText(context, "Enable permissions in Settings > Apps > safeher", Toast.LENGTH_LONG).show()
+                                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    })
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -356,50 +378,27 @@ fun TimerSelectionDialog(
     )
 }
 
-//@Composable
-//private fun FriendsMapView(
-//    locations: List<LiveLocation>,
-//    modifier: Modifier = Modifier
-//) {
-//    val defaultCameraPosition = remember {
-//        CameraPosition.fromLatLngZoom(LatLng(40.7128, -74.0060), 10f)
-//    }
-//    val cameraPositionState = rememberCameraPositionState {
-//        position = defaultCameraPosition
-//    }
-//
-//    // This makes the map UI self-contained
-//    GoogleMap(
-//        modifier = modifier,
-//        cameraPositionState = cameraPositionState,
-//        uiSettings = MapUiSettings(zoomControlsEnabled = false) // Disable zoom controls for a cleaner look in a small view
-//    ) {
-//        locations.forEach { friendLocation ->
-//            friendLocation.location?.let { geoPoint ->
-//                val position = LatLng(geoPoint.latitude, geoPoint.longitude)
-//                Marker(
-//                    state = MarkerState(position = position),
-//                    title = friendLocation.displayName,
-//                    snippet = "Last updated: ${friendLocation.lastUpdated}"
-//                )
-//            }
-//        }
-//    }
-//}
-
 @Composable
 fun CheckInScreen(
     checkInViewModel: CheckInViewModel = hiltViewModel(),
     mapViewModel: MapViewModel = hiltViewModel()
 ) {
     val sharingState by checkInViewModel.sharingState.collectAsState()
-    val friendLocations by mapViewModel.friendLocations.collectAsState()
     val friends by checkInViewModel.friends.collectAsState()
+
+    val locationsUiState by mapViewModel.locationsUiState.collectAsState()
+    val friendLocations by mapViewModel.friendLocations.collectAsState()
+    val friendTrackingInfo by mapViewModel.friendTrackingInfo.collectAsState()
+    val trackedFriendIds by mapViewModel.trackedFriendIds.collectAsState()
 
     CheckInScreenContent(
         sharingState = sharingState,
+        locationsUiState = locationsUiState,
         friendLocations = friendLocations,
         friends = friends,
+        friendTrackingInfo = friendTrackingInfo,
+        trackedFriendIds = trackedFriendIds,
+        onUpdateTrackedFriends = mapViewModel::updateTrackedFriends,
         onStartInstant = checkInViewModel::startInstantShare,
         onStartDelayed = checkInViewModel::startDelayedShare,
         onStop = checkInViewModel::stopSharing
@@ -410,13 +409,47 @@ fun CheckInScreen(
 @Composable
 fun CheckInScreenContent(
     sharingState: LocationSharingState,
+    locationsUiState: UiState<List<LiveLocation>>,
     friendLocations: List<LiveLocation>,
     friends: List<Friend>,
+    friendTrackingInfo: List<FriendTrackingInfo>,
+    trackedFriendIds: Set<String>,
+    onUpdateTrackedFriends: (Set<String>) -> Unit,
     onStartInstant: (Long, List<String>) -> Unit,
     onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
+    var showFriendLocationDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val cpuAbi = remember {
+        val primaryAbi = Build.SUPPORTED_ABIS.firstOrNull() ?: ""
+        val is64BitArm = primaryAbi.startsWith("arm64") || primaryAbi.startsWith("aarch64")
+        val is32BitArm = primaryAbi.startsWith("armeabi")
+        val isX86 = primaryAbi.contains("x86")
+
+        Log.d("CheckInScreenContent", "Primary ABI: $primaryAbi")
+        Log.d("CheckInScreenContent", "All ABIs: ${Build.SUPPORTED_ABIS.joinToString()}")
+        Log.d("CheckInScreenContent", "Is ARM: ${is64BitArm || is32BitArm}, Is x86: $isX86")
+
+        is64BitArm || is32BitArm
+    }
+
+    val isHmsAvailable = remember {
+        val hmsResult = HuaweiApiAvailability.getInstance()
+            .isHuaweiMobileServicesAvailable(context)
+        val available = hmsResult == ConnectionResult.SUCCESS
+        Log.d("CheckInScreenContent", "HMS Available: $available (result code: $hmsResult)")
+        available
+    }
+
+    val shouldUseHmsMap = cpuAbi && isHmsAvailable
+
+    Log.d("CheckInScreenContent", "=== MAP SELECTION ===")
+    Log.d("CheckInScreenContent", "CPU ABI is ARM: $cpuAbi")
+    Log.d("CheckInScreenContent", "HMS Available: $isHmsAvailable")
+    Log.d("CheckInScreenContent", "Will use HMS Map: $shouldUseHmsMap")
+    Log.d("CheckInScreenContent", "====================")
 
     val permissionsToRequest = remember {
         mutableListOf(
@@ -440,144 +473,242 @@ fun CheckInScreenContent(
         }
     }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    if (showFriendLocationDialog) {
+        FriendsLocationDialog(
+            friendsInfo = friendTrackingInfo,
+            initiallySelectedIds = trackedFriendIds,
+            onDismiss = { showFriendLocationDialog = false },
+            onConfirm = { selectedIds ->
+                onUpdateTrackedFriends(selectedIds)
+                showFriendLocationDialog = false
+            }
+        )
+    }
 
-            Log.d("CheckInScreenContent", "showing location sharing section")
-            LocationSharingSection(
-                sharingState = sharingState,
-                arePermissionsGranted = permissionState.allPermissionsGranted,
-                onRequestPermissions = { permissionState.launchMultiplePermissionRequest() },
-                friends = friends,
-                onStartInstant = onStartInstant,
-                onStartDelayed = onStartDelayed,
-                onStop = onStop
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
 
-            if (friendLocations.isNotEmpty()) {
-                Log.d("CheckInScreenContent","showing map")
-                Spacer(modifier = Modifier.height(8.dp))
+        Log.d("CheckInScreenContent", "showing location sharing section")
+        LocationSharingSection(
+            sharingState = sharingState,
+            permissionState = permissionState,  // Passed here
+            arePermissionsGranted = permissionState.allPermissionsGranted,
+            friends = friends,
+            onStartInstant = onStartInstant,
+            onStartDelayed = onStartDelayed,
+            onStop = onStop
+        )
 
+        when (locationsUiState) {
+            is UiState.Loading -> {
+                Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is UiState.Error -> {
                 Text(
-                    text = "Friend Location Preview",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                val firstFriendLocation = friendLocations.first()
-
-                Log.d("CheckInScreenContent", "showing static map preview")
-                StaticHmsMapPreview(
-                    location = firstFriendLocation,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = locationsUiState.message ?: "Failed to load friend locations.",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 16.dp)
                 )
             }
-              // Quick Actions Section
-//            QuickActionsSection()
-//
-//            // Emergency SOS Section
-//            EmergencySOSSection()
-//
-//            // Safety Timer Section
-//            SafetyTimerSection()
-//
-//            // Recent Check-ins Section
-//            RecentCheckInsSection()
-        }
+            is UiState.Success -> {
+                val locations = locationsUiState.data
+                if (locations.isNotEmpty()) {
+                    Log.d("CheckInScreenContent", "showing map")
+                    Spacer(modifier = Modifier.height(8.dp))
 
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Friend Location Preview",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(onClick = { showFriendLocationDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Outlined.Group,
+                                contentDescription = "Select Friends",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Select")
+                        }
+                    }
+
+                    val firstFriendLocation = locations.first()
+                    Log.d("CheckInScreenContent", "showing static map preview")
+
+                    if (shouldUseHmsMap) {
+                        Log.d("CheckInScreenContent", ">>> Rendering HMS Map <<<")
+                        StaticHmsMapPreview(
+                            location = firstFriendLocation,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    } else {
+                        Log.d("CheckInScreenContent", ">>> Rendering Static Map (Fallback) <<<")
+                        StaticMapPreview(
+                            location = firstFriendLocation,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                } else {
+                    Log.d("CheckInScreenContent", "Success, but no friend locations available")
+                }
+            }
+        }
+//        // Quick Actions Section
+//        QuickActionsSection()
+////
+////      // Emergency SOS Section
+//        EmergencySOSSection()
+////
+////      // Safety Timer Section
+//        SafetyTimerSection()
+////
+////      // Recent Check-ins Section
+//        RecentCheckInsSection()
+    }
 }
 
-//@Preview(name = "Check-In Screen - Idle State", showBackground = true)
+//@Preview(name = "Check-In Screen - Idle, No Friends Sharing", showBackground = true)
 //@Composable
 //fun CheckInScreenIdlePreview() {
 //    SafeHerTheme {
 //        CheckInScreenContent(
 //            sharingState = LocationSharingState(mode = SharingMode.IDLE),
-//            onStartInstant = {},
-//            onStartDelayed = {},
+//            friendLocations = emptyList(),
+//            friends = listOf(Friend(id = "1", displayName = "Jane Doe")),
+//            friendTrackingInfo = emptyList(),
+//            trackedFriendIds = emptySet(),
+//            onUpdateTrackedFriends = {},
+//            onStartInstant = { _, _ -> },
+//            onStartDelayed = { _, _ -> },
 //            onStop = {}
 //        )
 //    }
 //}
-
+//
+//@Preview(name = "Check-In Screen - With Friend Location", showBackground = true)
+//@Composable
+//fun CheckInScreenWithLocationPreview() {
+//    SafeHerTheme {
+//        val mockFriend = Friend(id = "friend1", displayName = "Jane Doe")
+//        val mockLocation = LiveLocation(
+//            userId = "friend1",
+//            displayName = "Jane Doe",
+//            location = com.google.firebase.firestore.GeoPoint(40.7128, -74.0060) // New York City; assume this matches your model
+//        )
+//        val mockTrackingInfo = listOf(
+//            FriendTrackingInfo(friend = mockFriend, isSharingLocation = true)
+//        )
+//
+//        CheckInScreenContent(
+//            sharingState = LocationSharingState(mode = SharingMode.IDLE),
+//            friendLocations = listOf(mockLocation), // Provide a location to show the map
+//            friends = listOf(mockFriend),
+//            friendTrackingInfo = mockTrackingInfo,
+//            trackedFriendIds = setOf("friend1"),
+//            onUpdateTrackedFriends = {},
+//            onStartInstant = { _, _ -> },
+//            onStartDelayed = { _, _ -> },
+//            onStop = {}
+//        )
+//    }
+//}
+//
+//@OptIn(ExperimentalPermissionsApi::class)
 //@Preview(name = "Location Section - Idle", showBackground = true)
 //@Composable
 //fun LocationSharingSectionIdlePreview() {
 //    SafeHerTheme {
+//        val mockPermissions = rememberMultiplePermissionsState(permissions = emptyList())  // Mock for preview
+//
 //        LocationSharingSection(
 //            sharingState = LocationSharingState(mode = SharingMode.IDLE),
-//            arePermissionsGranted = false,
-//            onRequestPermissions = {},
-//            onStartInstant = {},
-//            onStartDelayed = {},
+//            permissionState = mockPermissions,  // Mock
+//            friends = emptyList(),
+//            arePermissionsGranted = true,
+//            onStartInstant = { _, _ -> },
+//            onStartDelayed = { _, _ -> },
 //            onStop = {}
 //        )
 //    }
 //}
 //
+//@OptIn(ExperimentalPermissionsApi::class)
 //@Preview(name = "Location Section - Countdown", showBackground = true)
 //@Composable
 //fun LocationSharingSectionCountdownPreview() {
 //    SafeHerTheme {
+//        val mockPermissions = rememberMultiplePermissionsState(permissions = emptyList())  // Mock for preview
+//
 //        LocationSharingSection(
 //            sharingState = LocationSharingState(
 //                mode = SharingMode.COUNTDOWN,
-//                timeLeftInMillis = 14, // Example time
-//                totalDurationInMillis = 15
+//                timeLeftInMillis = 14000, // 14 seconds
+//                totalDurationInMillis = 15000
 //            ),
-//            arePermissionsGranted = false,
-//            onRequestPermissions = {},
-//            onStartInstant = {},
-//            onStartDelayed = {},
+//            permissionState = mockPermissions,  // Mock
+//            friends = emptyList(),
+//            arePermissionsGranted = true,
+//            onStartInstant = { _, _ -> },
+//            onStartDelayed = { _, _ -> },
 //            onStop = {}
 //        )
 //    }
 //}
 //
+//@OptIn(ExperimentalPermissionsApi::class)
 //@Preview(name = "Location Section - Sharing", showBackground = true)
 //@Composable
 //fun LocationSharingSectionSharingPreview() {
 //    SafeHerTheme {
+//        val mockPermissions = rememberMultiplePermissionsState(permissions = emptyList())  // Mock for preview
+//
 //        LocationSharingSection(
 //            sharingState = LocationSharingState(
 //                mode = SharingMode.SHARING,
-//                timeLeftInMillis = 28,
-//                totalDurationInMillis = 30
+//                timeLeftInMillis = 28000, // 28 seconds
+//                totalDurationInMillis = 30000
 //            ),
-//            arePermissionsGranted = false,
-//            onRequestPermissions = {},
-//            onStartInstant = {},
-//            onStartDelayed = {},
+//            permissionState = mockPermissions,  // Mock
+//            friends = emptyList(),
+//            arePermissionsGranted = true,
+//            onStartInstant = { _, _ -> },
+//            onStartDelayed = { _, _ -> },
 //            onStop = {}
 //        )
 //    }
 //}
-
-@Preview(name = "Timer Dialog - Instant Share")
-@Composable
-fun TimerSelectionDialogInstantPreview() {
-    SafeHerTheme {
-        TimerSelectionDialog(
-            mode = ShareMode.INSTANT,
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
-}
-
-@Preview(name = "Timer Dialog - Delayed Share")
-@Composable
-fun TimerSelectionDialogDelayedPreview() {
-    SafeHerTheme {
-        TimerSelectionDialog(
-            mode = ShareMode.DELAYED,
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
-}
+//
+//@Preview(name = "Timer Dialog - Instant Share")
+//@Composable
+//fun TimerSelectionDialogInstantPreview() {
+//    SafeHerTheme {
+//        TimerSelectionDialog(
+//            mode = ShareMode.INSTANT,
+//            onDismiss = {},
+//            onConfirm = {}
+//        )
+//    }
+//}
+//
+//@Preview(name = "Timer Dialog - Delayed Share")
+//@Composable
+//fun TimerSelectionDialogDelayedPreview() {
+//    SafeHerTheme {
+//        TimerSelectionDialog(
+//            mode = ShareMode.DELAYED,
+//            onDismiss = {},
+//            onConfirm = {}
+//        )
+//    }
+//}
