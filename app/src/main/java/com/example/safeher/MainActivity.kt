@@ -15,12 +15,18 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.ui.Modifier
 import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.maps.MapsInitializer
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.rxjava3.exceptions.UndeliverableException
 import io.reactivex.rxjava3.plugins.RxJavaPlugins
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @AndroidEntryPoint
@@ -35,6 +41,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        testRemoteConfig()
 
         // Add RxJava error handler to prevent crashes from HMS Maps on unsupported architectures or failures
         setupRxJavaErrorHandler()
@@ -71,6 +79,28 @@ class MainActivity : ComponentActivity() {
                         finishActivity = { finish() }
                     )
                 }
+            }
+        }
+    }
+
+    private fun testRemoteConfig() {
+        val remoteConfig = FirebaseRemoteConfig.getInstance()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                remoteConfig.fetchAndActivate().await()
+                val apiKey = remoteConfig.getString("GEMINI_API_KEY")
+
+                val maskedKey = apiKey.take(6) + "..." + apiKey.takeLast(4)
+                if (apiKey.isNotEmpty()) {
+                    val maskedKey = apiKey.take(6) + "..." + apiKey.takeLast(4)
+                    Log.d("RemoteConfigTest", "✅ Gemini API key fetched: $maskedKey (masked)")
+                } else {
+                    Log.e("RemoteConfigTest", "❌ No key found! Check Firebase Console.")
+                }
+
+            } catch (e: Exception) {
+                Log.e("RemoteConfigTest", "❌ Error fetching key: ${e.message}")
             }
         }
     }

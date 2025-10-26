@@ -138,7 +138,7 @@ fun AIChat(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "AI Assistant",
+                            text = "SafeHer AI",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2D3748)

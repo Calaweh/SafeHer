@@ -6,10 +6,8 @@ import coil.ImageLoader
 import coil.fetch.Fetcher
 import coil.request.Options
 import coil.util.DebugLogger
-import com.example.safeher.BuildConfig
 import com.example.safeher.data.datasource.MediaRemoteDataSource
 import com.example.safeher.data.extensions.FirestoreImageFetcher
-import com.google.ai.client.generativeai.GenerativeModel
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,15 +19,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
-    @Provides
-    @Singleton
-    fun provideGenerativeModel(): GenerativeModel {
-        return GenerativeModel(
-            modelName = "gemini-2.5-flash",
-            apiKey = BuildConfig.GEMINI_API_KEY
-        )
-    }
 
     @Provides
     @Singleton
