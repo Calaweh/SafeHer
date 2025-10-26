@@ -2,6 +2,7 @@ package com.example.safeher.ui.checkin
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -44,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,7 +59,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.model.LocationSharingState
@@ -494,6 +500,19 @@ fun CheckInScreenContent(
     var showFriendLocationDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var lifecycleState by remember { mutableStateOf(Lifecycle.State.INITIALIZED) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            lifecycleState = event.targetState
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val cpuAbi = remember {
         val primaryAbi = Build.SUPPORTED_ABIS.firstOrNull() ?: ""
         val is64BitArm = primaryAbi.startsWith("arm64") || primaryAbi.startsWith("aarch64")
@@ -539,9 +558,36 @@ fun CheckInScreenContent(
 
     val permissionState = rememberMultiplePermissionsState(permissions = permissionsToRequest)
 
+    var actualPermissionsGranted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(lifecycleState) {
+        if (lifecycleState == Lifecycle.State.RESUMED) {
+
+            val granted = permissionsToRequest.all { permission ->
+                ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+            }
+            actualPermissionsGranted = granted
+            Log.d("CheckInScreenContent", "Lifecycle RESUMED - Manual permission check: $granted")
+            Log.d("CheckInScreenContent", "Accompanist says: ${permissionState.allPermissionsGranted}")
+        }
+    }
+
     LaunchedEffect(Unit) {
-        if (!permissionState.allPermissionsGranted) {
+        val granted = permissionsToRequest.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+        actualPermissionsGranted = granted
+        Log.d("CheckInScreenContent", "Initial permission check: $granted")
+
+        if (!granted && !permissionState.allPermissionsGranted) {
             permissionState.launchMultiplePermissionRequest()
+        }
+    }
+
+    LaunchedEffect(permissionState.allPermissionsGranted) {
+        if (permissionState.allPermissionsGranted) {
+            actualPermissionsGranted = true
+            Log.d("CheckInScreenContent", "Accompanist detected permissions granted")
         }
     }
 
