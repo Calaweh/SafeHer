@@ -19,6 +19,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.safeher.data.model.Friend
+import com.example.safeher.data.model.LiveLocation
 
 data class FriendTrackingInfo(
     val friend: Friend,
@@ -41,33 +43,54 @@ data class FriendTrackingInfo(
 @Composable
 fun FriendsLocationDialog(
     friendsInfo: List<FriendTrackingInfo>,
-    initiallySelectedIds: Set<String>,
+    currentUserLocation: LiveLocation?,
+    initiallySelectedId: String?,
     onDismiss: () -> Unit,
-    onConfirm: (Set<String>) -> Unit
+    onConfirm: (String?) -> Unit
 ) {
-    var selectedFriendIds by remember { mutableStateOf(initiallySelectedIds) }
+    var selectedUserId by remember { mutableStateOf(initiallySelectedId) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Track Friends") },
+        title = { Text("Navigate to Location") },
         text = {
             Column {
-                if (friendsInfo.isEmpty()) {
-                    Text("You have no friends to track.")
-                } else {
-                    Text("Select friends to see their location on the map.", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(16.dp))
-                    LazyColumn {
+                Text(
+                    "Select a location to navigate to on the map.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(16.dp))
+
+                LazyColumn {
+
+                    if (currentUserLocation != null) {
+                        item(key = "current_user") {
+                            UserLocationRow(
+                                userLocation = currentUserLocation,
+                                isSelected = selectedUserId == currentUserLocation.userId,
+                                onSelectionChanged = { userId ->
+                                    selectedUserId = userId
+                                }
+                            )
+                        }
+                    }
+
+                    if (friendsInfo.isEmpty()) {
+                        item {
+                            Text(
+                                "No friends are currently sharing their location.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                    } else {
                         items(friendsInfo, key = { it.friend.id }) { info ->
                             FriendSelectorRow(
                                 friendInfo = info,
-                                isSelected = selectedFriendIds.contains(info.friend.id),
-                                onSelectionChanged = { friendId, isSelected ->
-                                    selectedFriendIds = if (isSelected) {
-                                        selectedFriendIds + friendId
-                                    } else {
-                                        selectedFriendIds - friendId
-                                    }
+                                isSelected = selectedUserId == info.friend.id,
+                                onSelectionChanged = { userId ->
+                                    selectedUserId = userId
                                 }
                             )
                         }
@@ -77,9 +100,10 @@ fun FriendsLocationDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(selectedFriendIds) },
+                onClick = { onConfirm(selectedUserId) },
+                enabled = selectedUserId != null
             ) {
-                Text("Confirm")
+                Text("Navigate")
             }
         },
         dismissButton = {
@@ -89,25 +113,86 @@ fun FriendsLocationDialog(
 }
 
 @Composable
-private fun FriendSelectorRow(
-    friendInfo: FriendTrackingInfo,
+private fun UserLocationRow(
+    userLocation: LiveLocation,
     isSelected: Boolean,
-    onSelectionChanged: (String, Boolean) -> Unit
+    onSelectionChanged: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null, // No ripple effect
-                onClick = { onSelectionChanged(friendInfo.friend.id, !isSelected) }
+                indication = null,
+                onClick = { onSelectionChanged(userLocation.userId) }
             )
-            .padding(vertical = 8.dp),
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else Color.Transparent
+            )
+            .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = isSelected,
-            onCheckedChange = { checked -> onSelectionChanged(friendInfo.friend.id, checked) }
+        RadioButton(
+            selected = isSelected,
+            onClick = { onSelectionChanged(userLocation.userId) }
+        )
+        Spacer(Modifier.width(12.dp))
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "My Location",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Currently sharing",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun FriendSelectorRow(
+    friendInfo: FriendTrackingInfo,
+    isSelected: Boolean,
+    onSelectionChanged: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    if (friendInfo.isSharingLocation) {
+                        onSelectionChanged(friendInfo.friend.id)
+                    }
+                }
+            )
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else Color.Transparent
+            )
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = isSelected,
+            onClick = {
+                if (friendInfo.isSharingLocation) {
+                    onSelectionChanged(friendInfo.friend.id)
+                }
+            },
+            enabled = friendInfo.isSharingLocation
         )
         Spacer(Modifier.width(12.dp))
         Box(
@@ -117,6 +202,22 @@ private fun FriendSelectorRow(
                 .background(if (friendInfo.isSharingLocation) Color(0xFF4CAF50) else Color.Gray)
         )
         Spacer(Modifier.width(8.dp))
-        Text(text = friendInfo.friend.displayName, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = friendInfo.friend.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (friendInfo.isSharingLocation)
+                    MaterialTheme.colorScheme.onSurface
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (!friendInfo.isSharingLocation) {
+                Text(
+                    text = "Not sharing location",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
