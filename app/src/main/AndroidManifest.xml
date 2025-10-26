@@ -44,7 +44,7 @@
             android:exported="false" />
         <meta-data
             android:name="com.huawei.hms.client.appid"
-            android:value="appid=115664543" />
+            android:value="115664543" />
 
     </application>
 
