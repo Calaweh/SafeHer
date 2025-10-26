@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -138,19 +140,13 @@ fun LocationSharingSection(
                     ) {
                         Button(
                             onClick = {
-                                Log.d("LocationSharing", "Share Now button CLICKED!")
+                                Log.d("LocationSharing", "Share Now button CLICKED! Permissions: $arePermissionsGranted")
                                 if (arePermissionsGranted) {
                                     shareMode = ShareMode.INSTANT
                                     showTimerDialog = true
                                 } else {
-
-                                    if (permissionState.shouldShowRationale) {
+                                    if (permissionState.shouldShowRationale || !permissionState.allPermissionsGranted) {
                                         permissionState.launchMultiplePermissionRequest()
-                                    } else if (!permissionState.allPermissionsGranted) {
-                                        Toast.makeText(context, "Enable permissions in Settings > Apps > safeher", Toast.LENGTH_LONG).show()
-                                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                            data = Uri.fromParts("package", context.packageName, null)
-                                        })
                                     }
                                 }
                             },
@@ -168,13 +164,11 @@ fun LocationSharingSection(
                         OutlinedButton(
                             onClick = {
                                 Log.d("LocationSharing", "Share Later CLICKED! Permissions granted: $arePermissionsGranted")
-                                if (permissionState.shouldShowRationale) {
+                                if (arePermissionsGranted) {
+                                    shareMode = ShareMode.DELAYED
+                                    showTimerDialog = true
+                                } else {
                                     permissionState.launchMultiplePermissionRequest()
-                                } else if (!permissionState.allPermissionsGranted) {
-                                    Toast.makeText(context, "Enable permissions in Settings > Apps > safeher", Toast.LENGTH_LONG).show()
-                                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.fromParts("package", context.packageName, null)
-                                    })
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -413,6 +407,12 @@ fun TimerSelectionDialog(
     )
 }
 
+fun Modifier.preventParentScroll() = this.pointerInput(Unit) {
+    detectDragGestures { change, _ ->
+        change.consume()
+    }
+}
+
 @Composable
 fun CheckInScreen(
     checkInViewModel: CheckInViewModel = hiltViewModel(),
@@ -423,17 +423,22 @@ fun CheckInScreen(
 
     val locationsUiState by mapViewModel.locationsUiState.collectAsState()
     val friendLocations by mapViewModel.friendLocations.collectAsState()
+    val currentUserLocation by mapViewModel.currentUserLocation.collectAsState()
     val friendTrackingInfo by mapViewModel.friendTrackingInfo.collectAsState()
     val trackedFriendIds by mapViewModel.trackedFriendIds.collectAsState()
+    val selectedUserId by mapViewModel.selectedUserId.collectAsState()
 
     CheckInScreenContent(
         sharingState = sharingState,
         locationsUiState = locationsUiState,
         friendLocations = friendLocations,
+        currentUserLocation = currentUserLocation,
         friends = friends,
         friendTrackingInfo = friendTrackingInfo,
         trackedFriendIds = trackedFriendIds,
+        selectedUserId = selectedUserId,
         onUpdateTrackedFriends = mapViewModel::updateTrackedFriends,
+        onUpdateSelectedUser = mapViewModel::updateSelectedUser,
         onStartInstant = checkInViewModel::startInstantShare,
         onStartDelayed = checkInViewModel::startDelayedShare,
         onStop = checkInViewModel::stopSharing
@@ -446,10 +451,13 @@ fun CheckInScreenContent(
     sharingState: LocationSharingState,
     locationsUiState: UiState<List<LiveLocation>>,
     friendLocations: List<LiveLocation>,
+    currentUserLocation: LiveLocation?,
     friends: List<Friend>,
     friendTrackingInfo: List<FriendTrackingInfo>,
     trackedFriendIds: Set<String>,
+    selectedUserId: String?,
     onUpdateTrackedFriends: (Set<String>) -> Unit,
+    onUpdateSelectedUser: (String?) -> Unit,
     onStartInstant: (Long, List<String>) -> Unit,
     onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit
@@ -511,10 +519,11 @@ fun CheckInScreenContent(
     if (showFriendLocationDialog) {
         FriendsLocationDialog(
             friendsInfo = friendTrackingInfo,
-            initiallySelectedIds = trackedFriendIds,
+            currentUserLocation = currentUserLocation,
+            initiallySelectedId = selectedUserId,
             onDismiss = { showFriendLocationDialog = false },
-            onConfirm = { selectedIds ->
-                onUpdateTrackedFriends(selectedIds)
+            onConfirm = { selectedId ->
+                onUpdateSelectedUser(selectedId)
                 showFriendLocationDialog = false
             }
         )
@@ -554,7 +563,6 @@ fun CheckInScreenContent(
             is UiState.Success -> {
                 val locations = locationsUiState.data
                 if (locations.isNotEmpty()) {
-                    Log.d("CheckInScreenContent", "showing map")
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
@@ -563,39 +571,46 @@ fun CheckInScreenContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Friend Location Preview",
+                            text = "Location Preview",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         TextButton(onClick = { showFriendLocationDialog = true }) {
                             Icon(
                                 imageVector = Icons.Outlined.Group,
-                                contentDescription = "Select Friends",
+                                contentDescription = "Select Location",
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Select")
+                            Text("Navigate")
                         }
                     }
 
-                    val firstFriendLocation = locations.first()
-                    Log.d("CheckInScreenContent", "showing static map preview")
+                    // Show selected location or first location
+                    val displayLocation = selectedUserId?.let { id ->
+                        locations.find { it.userId == id }
+                    } ?: locations.first()
 
-                    if (shouldUseHmsMap) {
-                        Log.d("CheckInScreenContent", ">>> Rendering HMS Map <<<")
-                        StaticHmsMapPreview(
-                            location = firstFriendLocation,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    } else {
-                        Log.d("CheckInScreenContent", ">>> Rendering Static Map (Fallback) <<<")
-                        StaticMapPreview(
-                            location = firstFriendLocation,
-                            modifier = Modifier.padding(top = 8.dp)
+                    if (selectedUserId != null) {
+                        Text(
+                            text = "Showing: ${displayLocation.displayName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
-                } else {
-                    Log.d("CheckInScreenContent", "Success, but no friend locations available")
+
+                    if (shouldUseHmsMap) {
+                        StaticHmsMapPreview(
+                            location = displayLocation,
+                            modifier = Modifier.padding(top = 8.dp).preventParentScroll()
+                        )
+                    } else {
+                        StaticMapPreview(
+                            location = displayLocation,
+                            modifier = Modifier.padding(top = 8.dp).preventParentScroll()
+                        )
+                    }
                 }
             }
         }

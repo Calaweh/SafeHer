@@ -47,6 +47,9 @@ class MapViewModel @Inject constructor(
     private val _trackedFriendIds = MutableStateFlow<Set<String>>(emptySet())
     val trackedFriendIds: StateFlow<Set<String>> = _trackedFriendIds.asStateFlow()
 
+    private val _selectedUserId = MutableStateFlow<String?>(null)
+    val selectedUserId: StateFlow<String?> = _selectedUserId.asStateFlow()
+
     val friendLocations: StateFlow<List<LiveLocation>> = locationsUiState.map {
         if (it is UiState.Success) it.data else emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -83,6 +86,9 @@ class MapViewModel @Inject constructor(
                     }
             }
         }
+
+    val currentUserLocation: StateFlow<LiveLocation?> = userLocationFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
         observeAllLocations()
@@ -140,6 +146,18 @@ class MapViewModel @Inject constructor(
                 Log.e("MapViewModel", "An error occurred in observeAllLocations", e)
                 _locationsUiState.value = UiState.Error(e.message)
             }
+        }
+    }
+
+    fun updateSelectedUser(userId: String?) {
+        _selectedUserId.value = userId
+        Log.d("MapViewModel", "Selected user updated to: $userId")
+    }
+
+    fun getLocationForUser(userId: String): LiveLocation? {
+        return when (val state = _locationsUiState.value) {
+            is UiState.Success -> state.data.find { it.userId == userId }
+            else -> null
         }
     }
 }
