@@ -1,15 +1,18 @@
 package com.example.safeher.data.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.CountDownTimer
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.example.safeher.MainActivity
@@ -24,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -37,6 +41,7 @@ class LocationSharingService : LifecycleService() {
 
     private var locationJob: Job? = null
     private var timer: CountDownTimer? = null
+    private var notificationManager: NotificationManager? = null
 
     companion object {
         const val ACTION_START_INSTANT = "ACTION_START_INSTANT"
@@ -46,6 +51,11 @@ class LocationSharingService : LifecycleService() {
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "location_sharing_channel"
         const val EXTRA_SHARED_WITH_IDS = "EXTRA_SHARED_WITH_IDS"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -64,6 +74,7 @@ class LocationSharingService : LifecycleService() {
             ACTION_STOP -> {
                 stopServiceAndSharing()
             }
+            else -> stopSelf()
         }
         return START_STICKY
     }
@@ -75,19 +86,26 @@ class LocationSharingService : LifecycleService() {
         stopCurrentTask()
         val durationMillis = TimeUnit.MINUTES.toMillis(durationMinutes)
 
-        startLocationUpdates(sharedWithIds)
+        startForeground(NOTIFICATION_ID, createNotification())
 
-        timer = object : CountDownTimer(durationMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                repository.updateState(
-                    LocationSharingState(SharingMode.SHARING, millisUntilFinished, durationMillis)
-                )
-                startForeground(NOTIFICATION_ID, createNotification())
-            }
-            override fun onFinish() {
-                stopServiceAndSharing()
-            }
-        }.start()
+        if (durationMillis > 0) {
+            timer = object : CountDownTimer(durationMillis, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    repository.updateState(
+                        LocationSharingState(SharingMode.SHARING, millisUntilFinished, durationMillis)
+                    )
+                    updateNotification()
+                }
+                override fun onFinish() {
+                    stopServiceAndSharing()
+                }
+            }.start()
+        } else {
+            // Indefinite: Start updates without timer, but keep notification
+            repository.updateState(LocationSharingState(SharingMode.SHARING, 0, 0))
+        }
+
+        startLocationUpdates(sharedWithIds)
     }
 
     private fun startDelayedSharing(delayMinutes: Long, sharedWithIds: List<String>) {
@@ -97,19 +115,19 @@ class LocationSharingService : LifecycleService() {
         stopCurrentTask()
         val delayMillis = TimeUnit.MINUTES.toMillis(delayMinutes)
 
+        startForeground(NOTIFICATION_ID, createNotification())
+
         timer = object : CountDownTimer(delayMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 repository.updateState(
                     LocationSharingState(SharingMode.COUNTDOWN, millisUntilFinished, delayMillis)
                 )
-                startForeground(NOTIFICATION_ID, createNotification())
+                updateNotification()
             }
             override fun onFinish() {
+                repository.updateState(LocationSharingState(SharingMode.SHARING, 0, 0))
+                updateNotification()
                 startLocationUpdates(sharedWithIds)
-                repository.updateState(
-                    LocationSharingState(SharingMode.SHARING, 0, 0)
-                )
-                startForeground(NOTIFICATION_ID, createNotification())
             }
         }.start()
     }
@@ -120,17 +138,27 @@ class LocationSharingService : LifecycleService() {
 
         if (locationJob?.isActive == true) return
 
+        if (!hasLocationPermissions()) {
+            Log.e("LocationSharingService", "Missing location permissions")
+            stopServiceAndSharing()
+            return
+        }
+
         locationJob = lifecycleScope.launch {
+            val user = withTimeoutOrNull(5000) { userDataSource.userState.first { it != null } }
+            if (user == null) {
+                Log.e("LocationSharingService", "User not available")
+                stopServiceAndSharing()
+                return@launch
+            }
 
-            val user = userDataSource.userState.first { it != null }
-
-            Log.d("LocationSharingService", "User is available: ${user?.id}. Now calling getLocationUpdates.")
+            Log.d("LocationSharingService", "User available: ${user.id}. Starting updates.")
 
             try {
                 locationProvider.getLocationUpdates().collect { location ->
-                    Log.d("LocationSharingService", "try to update user location")
+                    Log.d("LocationSharingService", "Updating location")
                     locationDataSource.updateUserLocation(
-                        userId = user!!.id,
+                        userId = user.id,
                         displayName = user.displayName,
                         imageUrl = user.imageUrl,
                         lat = location.latitude,
@@ -139,9 +167,19 @@ class LocationSharingService : LifecycleService() {
                     )
                 }
             } catch (e: Exception) {
-                Log.e("LocationSharingService", "Error from startLocationUpdates: ${e.message}")
+                Log.e("LocationSharingService", "Location updates failed: ${e.message}")
+                stopServiceAndSharing()
             }
         }
+    }
+
+    private fun hasLocationPermissions(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun updateNotification() {
+        notificationManager?.notify(NOTIFICATION_ID, createNotification())
     }
 
     private fun stopServiceAndSharing() {
