@@ -2,9 +2,9 @@ package com.example.safeher.ui.signup
 
 import MainViewModel
 import android.util.Patterns
+import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
 import com.example.safeher.data.repository.AuthRepository
-import com.example.safeher.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

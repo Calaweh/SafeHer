@@ -6,13 +6,27 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.safeher.data.datasource.LocationRemoteDataSource
 import com.example.safeher.data.datasource.UserDataSource
+import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.repository.FriendRepository
 import com.example.safeher.utils.ILocationProvider
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,13 +39,32 @@ class MapViewModel @Inject constructor(
     private val locationProvider: ILocationProvider
 ) : ViewModel() {
 
-    private val _friendLocations = MutableStateFlow<List<LiveLocation>>(emptyList())
-    val friendLocations: StateFlow<List<LiveLocation>> = _friendLocations.asStateFlow()
+    private val _locationsUiState = MutableStateFlow<UiState<List<LiveLocation>>>(UiState.Loading)
+    val locationsUiState: StateFlow<UiState<List<LiveLocation>>> = _locationsUiState.asStateFlow()
+
+    private val _allFriends = MutableStateFlow<List<Friend>>(emptyList())
+
+    private val _trackedFriendIds = MutableStateFlow<Set<String>>(emptySet())
+    val trackedFriendIds: StateFlow<Set<String>> = _trackedFriendIds.asStateFlow()
+
+    val friendLocations: StateFlow<List<LiveLocation>> = locationsUiState.map {
+        if (it is UiState.Success) it.data else emptyList()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val friendTrackingInfo: StateFlow<List<FriendTrackingInfo>> =
+        combine(_allFriends, friendLocations) { allFriends, locations ->
+            val sharingUserIds = locations.map { it.userId }.toSet()
+            allFriends.map { friend ->
+                FriendTrackingInfo(
+                    friend = friend,
+                    isSharingLocation = sharingUserIds.contains(friend.id)
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val userLocationFlow: Flow<LiveLocation?> = userDataSource.userState
         .flatMapLatest { user ->
             if (user == null) {
-                // If the user is null, emit a null value. This now matches the Flow's type.
                 flowOf(null)
             } else {
                 locationProvider.getLocationUpdates()
@@ -46,7 +79,6 @@ class MapViewModel @Inject constructor(
                     }
                     .catch { e ->
                         Log.e("MapViewModel", "Error getting user's own location", e)
-                        // This is now valid because the Flow's type is Flow<LiveLocation?>
                         emit(null)
                     }
             }
@@ -56,31 +88,57 @@ class MapViewModel @Inject constructor(
         observeAllLocations()
     }
 
+    fun updateTrackedFriends(friendIds: Set<String>) {
+        _trackedFriendIds.value = friendIds
+    }
+
     private fun observeAllLocations() {
         viewModelScope.launch {
-            userDataSource.userState.first { it != null }.let { user ->
+            try {
+                _locationsUiState.value = UiState.Loading
 
-                val friendsLocationsFlow: Flow<List<LiveLocation>> = friendRepository.getFriendsByUser(user!!.id)
-                    .flatMapLatest { friends ->
-                        val acceptedFriendIds = friends.friends.map { it.id }
-                        if (acceptedFriendIds.isNotEmpty()) {
-                            locationDataSource.getFriendsLocations(acceptedFriendIds)
-                        } else {
-                            flowOf(emptyList())
+                val user = userDataSource.userState.first { it != null }
+                    ?: run {
+                        _locationsUiState.value = UiState.Success(emptyList())
+                        return@launch
+                    }
+
+                friendRepository.getFriendsByUser(user.id)
+                    .onEach { friendsData ->
+                        _allFriends.value = friendsData.friends
+                        if (_trackedFriendIds.value.isEmpty() && friendsData.friends.isNotEmpty()) {
+                            _trackedFriendIds.value = friendsData.friends.map { it.id }.toSet()
                         }
                     }
                     .catch { e ->
-                        Log.e("MapViewModel", "Error observing friend locations", e)
-                        emit(emptyList())
+                        Log.e("MapViewModel", "Error getting all friends", e)
+                        _allFriends.value = emptyList()
                     }
+                    .launchIn(viewModelScope)
+
+                val friendsLocationsFlow: Flow<List<LiveLocation>> = _trackedFriendIds.flatMapLatest { trackedIds ->
+                    if (trackedIds.isNotEmpty()) {
+                        locationDataSource.getFriendsLocations(trackedIds.toList())
+                    } else {
+                        flowOf(emptyList())
+                    }
+                }.catch { e ->
+                    Log.e("MapViewModel", "Error observing friend locations", e)
+                    emit(emptyList())
+
+                    _locationsUiState.value = UiState.Error("Failed to load friend locations.")
+                }
 
                 combine(userLocationFlow, friendsLocationsFlow) { myLocation, friendLocations ->
                     val combinedList = friendLocations.toMutableList()
                     myLocation?.let { combinedList.add(0, it) }
                     combinedList
                 }.collect { finalLocationsList ->
-                    _friendLocations.value = finalLocationsList
+                    _locationsUiState.value = UiState.Success(finalLocationsList)
                 }
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "An error occurred in observeAllLocations", e)
+                _locationsUiState.value = UiState.Error(e.message)
             }
         }
     }

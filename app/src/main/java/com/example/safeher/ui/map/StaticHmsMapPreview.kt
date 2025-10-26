@@ -4,8 +4,10 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,19 +17,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.safeher.data.model.LiveLocation
 import com.huawei.hms.maps.CameraUpdateFactory
 import com.huawei.hms.maps.MapView
@@ -35,6 +45,24 @@ import com.huawei.hms.maps.MapsInitializer
 import com.huawei.hms.maps.OnMapReadyCallback
 import com.huawei.hms.maps.model.LatLng
 import com.huawei.hms.maps.model.MarkerOptions
+import kotlinx.coroutines.delay
+
+@Composable
+fun MapPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(250.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Loading map...",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @Composable
 fun StaticHmsMapPreview(
@@ -42,45 +70,71 @@ fun StaticHmsMapPreview(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var mapInitSuccess by remember { mutableStateOf(false) }
+    var mapReady by remember { mutableStateOf(false) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    // Fallback initialization (optional, prefer Application class)
-    DisposableEffect(Unit) {
-        MapsInitializer.initialize(context)
-        onDispose { }
+//    LaunchedEffect(Unit) {
+//        try {
+//            MapsInitializer.initialize(context)
+//            Log.d("HmsMapPreview", "HMS Maps initialized successfully")
+//            mapInitSuccess = true
+//        } catch (e: Exception) {
+//            Log.e("HmsMapPreview", "Failed to initialize HMS Maps", e)
+//        }
+//    }
+
+    if (!mapInitSuccess || location?.location == null) {
+        StaticMapPreview(location = location, modifier = modifier)  // Assuming StaticMapPreview is defined
+        return
     }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {
-        // Check if we have a valid location to display
-        if (location?.location != null) {
-            val hmsLatLng = remember(location) {
-                LatLng(location.location.latitude, location.location.longitude)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+        ) {
+            if (!mapReady) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
-            Box(
+            val mapView = remember { MapView(context).apply { id = View.generateViewId() } }
+
+            AndroidView(
+                factory = { mapView },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp)
-            ) {
-                // Huawei MapView wrapped in AndroidView
-                val mapView = remember { MapView(context).apply { id = View.generateViewId() } }
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+            )
 
-                AndroidView(
-                    factory = { mapView },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(16.dp)),
-                    update = { view ->
-                        // Update logic (if needed) can go here
+            DisposableEffect(lifecycle, mapView) {
+                val observer = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_CREATE -> mapView.onCreate(Bundle())
+                        Lifecycle.Event.ON_START -> mapView.onStart()
+                        Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                        Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                        Lifecycle.Event.ON_STOP -> mapView.onStop()
+                        Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                        else -> {}
                     }
-                )
+                }
+                lifecycle.addObserver(observer)
 
-                // Handle MapView lifecycle
-                DisposableEffect(mapView) {
+                try {
                     val callback = OnMapReadyCallback { huaweiMap ->
-                        // Disable interactive features for static map
+                        Log.d("HmsMapPreview", "OnMapReady called successfully")
+                        mapReady = true
+
                         huaweiMap.uiSettings.isZoomControlsEnabled = false
                         huaweiMap.uiSettings.isScrollGesturesEnabled = false
                         huaweiMap.uiSettings.isZoomGesturesEnabled = false
@@ -90,26 +144,45 @@ fun StaticHmsMapPreview(
 
                         // Set camera position
                         huaweiMap.moveCamera(
-                            CameraUpdateFactory.newLatLngZoom(hmsLatLng, 15f)
+                            CameraUpdateFactory.newLatLngZoom(
+                                LatLng(location.location.latitude, location.location.longitude),
+                                15f
+                            )
                         )
                         // Add marker
                         huaweiMap.addMarker(
                             MarkerOptions()
-                                .position(hmsLatLng)
+                                .position(LatLng(location.location.latitude, location.location.longitude))
                                 .title("Location")
                         )
                     }
-                    mapView.onCreate(Bundle())
                     mapView.getMapAsync(callback)
-
-                    // Lifecycle cleanup
-                    onDispose {
-                        mapView.onPause()
-                        mapView.onDestroy()
-                    }
+                    Log.d("HmsMapPreview", "MapView created and getMapAsync called")
+                } catch (e: Exception) {
+                    Log.e("HmsMapPreview", "Failed to create MapView", e)
+                    mapInitSuccess = false
                 }
 
-                // Directions button for Petal Maps
+                onDispose {
+                    lifecycle.removeObserver(observer)
+                    try {
+                        mapView.onDestroy()
+                        Log.d("HmsMapPreview", "MapView cleaned up")
+                    } catch (e: Exception) {
+                        Log.e("HmsMapPreview", "MapView cleanup failed", e)
+                    }
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                delay(5000)
+                if (!mapReady) {
+                    Log.e("HmsMapPreview", "Map ready timeout - falling back")
+                    mapInitSuccess = false
+                }
+            }
+
+            if (mapReady) {
                 ExtendedFloatingActionButton(
                     onClick = {
                         val lat = location.location.latitude
@@ -130,16 +203,6 @@ fun StaticHmsMapPreview(
                     text = { Text("Directions") },
                     icon = { Icon(Icons.Outlined.Directions, contentDescription = "Directions") }
                 )
-            }
-        } else {
-            // Fallback view when there is no location
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No location to display.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

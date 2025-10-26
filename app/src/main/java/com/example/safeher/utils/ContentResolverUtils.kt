@@ -3,7 +3,6 @@ package com.example.safeher.utils
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import androidx.compose.ui.platform.LocalContext
 
 fun getFileName(context: Context, uri: Uri): String? {
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->

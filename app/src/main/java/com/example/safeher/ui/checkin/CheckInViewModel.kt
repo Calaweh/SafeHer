@@ -6,9 +6,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.safeher.data.model.Friend
+import com.example.safeher.data.repository.AuthRepository
 import com.example.safeher.data.repository.FriendRepository
 import com.example.safeher.data.repository.LocationSharingRepository
-import com.example.safeher.data.repository.AuthRepository
 import com.example.safeher.data.service.LocationSharingService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

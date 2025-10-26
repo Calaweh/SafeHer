@@ -14,4 +14,8 @@ class LocationSharingRepository @Inject constructor() {
     fun updateState(newState: LocationSharingState) {
         _sharingState.value = newState
     }
+
+    fun resetState() {
+        _sharingState.value = LocationSharingState()
+    }
 }

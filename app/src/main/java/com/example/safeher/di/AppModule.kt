@@ -1,24 +1,22 @@
 package com.example.safeher.di
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import coil.ImageLoader
 import coil.fetch.Fetcher
 import coil.request.Options
 import coil.util.DebugLogger
+import com.example.safeher.BuildConfig
 import com.example.safeher.data.datasource.MediaRemoteDataSource
 import com.example.safeher.data.extensions.FirestoreImageFetcher
 import com.google.ai.client.generativeai.GenerativeModel
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-import com.example.safeher.BuildConfig
 
 @Module
 @InstallIn(SingletonComponent::class)

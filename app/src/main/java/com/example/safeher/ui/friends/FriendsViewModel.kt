@@ -3,10 +3,10 @@ package com.example.safeher.ui.friends
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.safeher.data.datasource.UserDataSource
 import com.example.safeher.data.model.Friends
 import com.example.safeher.data.model.User
 import com.example.safeher.data.repository.FriendRepository
-import com.example.safeher.data.datasource.UserDataSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

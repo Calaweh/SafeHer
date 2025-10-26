@@ -1,6 +1,5 @@
 package com.example.safeher.data.model
 
-import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.PropertyName
 import java.util.Date
 

@@ -1,13 +1,13 @@
 package com.example.safeher.data.service
 
 import com.google.firebase.Firebase
-import com.example.safeher.R.xml as AppConfig
-import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
-import com.google.firebase.remoteconfig.remoteConfig
-import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.trace
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import com.example.safeher.R.xml as AppConfig
 
 class FirestoreConfigurationService @Inject constructor() : ConfigurationService
 {
