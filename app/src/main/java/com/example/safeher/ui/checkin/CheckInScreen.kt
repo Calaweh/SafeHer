@@ -450,6 +450,7 @@ fun Modifier.preventParentScroll() = this.pointerInput(Unit) {
 
 @Composable
 fun CheckInScreen(
+    nagivateToLiveMap: (String) -> Unit,
     checkInViewModel: CheckInViewModel = hiltViewModel(),
     mapViewModel: MapViewModel = hiltViewModel()
 ) {
@@ -476,7 +477,8 @@ fun CheckInScreen(
         onUpdateSelectedUser = mapViewModel::updateSelectedUser,
         onStartInstant = checkInViewModel::startInstantShare,
         onStartDelayed = checkInViewModel::startDelayedShare,
-        onStop = checkInViewModel::stopSharing
+        onStop = checkInViewModel::stopSharing,
+        nagivateToLiveMap
     )
 }
 
@@ -495,7 +497,8 @@ fun CheckInScreenContent(
     onUpdateSelectedUser: (String?) -> Unit,
     onStartInstant: (Long, List<String>) -> Unit,
     onStartDelayed: (Long, List<String>) -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    nagivateToLiveMap: (String) -> Unit
 ) {
     var showFriendLocationDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -650,14 +653,25 @@ fun CheckInScreenContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        TextButton(onClick = { showFriendLocationDialog = true }) {
+                        TextButton(onClick =
+                            {
+                                showFriendLocationDialog = true
+//                                val targetUserId = selectedUserId ?: friendLocations.firstOrNull()?.userId
+//                                if (targetUserId != null) {
+//
+//                                    nagivateToLiveMap(targetUserId)
+//                                } else {
+//                                    Toast.makeText(context, "No location available to track", Toast.LENGTH_SHORT).show()
+//                                }
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Outlined.Group,
                                 contentDescription = "Select Location",
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Navigate")
+                            Text("Track Live")
                         }
                     }
 

@@ -54,15 +54,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
 import com.example.safeher.ui.explore.ExploreScreen
 import com.example.safeher.ui.forgotpassword.ForgotPasswordScreen
 import com.example.safeher.ui.friends.FriendsScreen
+import com.example.safeher.ui.map.LiveMapScreen
 import com.example.safeher.ui.me.MeScreen
 import com.example.safeher.ui.resource.AIChat
 import com.example.safeher.ui.resource.ResourceHubScreen
@@ -342,7 +345,9 @@ private fun AppScaffold(
                 ForgotPasswordScreen(openSignInScreen = { navController.navigate(Screen.SignIn.name) })
             }
             composable(Screen.Explore.name) {
-                ExploreScreen(navController = navController)
+                ExploreScreen(
+                    navController = navController
+                )
             }
             composable(Screen.Friends.name) {
                 FriendsScreen()
@@ -386,6 +391,18 @@ private fun AppScaffold(
                 // TODO: Create CheckInScreen
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Check-In Timer Screen")
+                }
+            }
+            composable(
+                route = "liveMap/{userId}",
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId")
+                if (userId != null) {
+                    LiveMapScreen(
+                        userId = userId,
+                        onNavigateUp = { navController.navigateUp() }
+                    )
                 }
             }
         }

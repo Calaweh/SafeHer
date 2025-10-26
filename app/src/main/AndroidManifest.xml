@@ -43,8 +43,8 @@
             android:foregroundServiceType="location"
             android:exported="false" />
         <meta-data
-            android:name="com.huawei.hms.maps.api_key"
-            android:value="DgEDADECaluZSQg97ljDr5L7mWEB2dnpdZfnKhmW7KYY0XiK7B6arrz+T+QraG7a7a/ZFMlX1bksd7hahKFIp6lrxrjKZsSsYlFEiA==" />
+            android:name="com.huawei.hms.client.appid"
+            android:value="115664543" />
 
     </application>
 
