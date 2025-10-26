@@ -74,15 +74,15 @@ fun StaticHmsMapPreview(
     var mapReady by remember { mutableStateOf(false) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(Unit) {
-        try {
-            MapsInitializer.initialize(context)
-            Log.d("HmsMapPreview", "HMS Maps initialized successfully")
-            mapInitSuccess = true
-        } catch (e: Exception) {
-            Log.e("HmsMapPreview", "Failed to initialize HMS Maps", e)
-        }
-    }
+//    LaunchedEffect(Unit) {
+//        try {
+//            MapsInitializer.initialize(context)
+//            Log.d("HmsMapPreview", "HMS Maps initialized successfully")
+//            mapInitSuccess = true
+//        } catch (e: Exception) {
+//            Log.e("HmsMapPreview", "Failed to initialize HMS Maps", e)
+//        }
+//    }
 
     if (!mapInitSuccess || location?.location == null) {
         StaticMapPreview(location = location, modifier = modifier)  // Assuming StaticMapPreview is defined
@@ -134,7 +134,7 @@ fun StaticHmsMapPreview(
                     val callback = OnMapReadyCallback { huaweiMap ->
                         Log.d("HmsMapPreview", "OnMapReady called successfully")
                         mapReady = true
-                        // Disable interactive features for static map
+
                         huaweiMap.uiSettings.isZoomControlsEnabled = false
                         huaweiMap.uiSettings.isScrollGesturesEnabled = false
                         huaweiMap.uiSettings.isZoomGesturesEnabled = false
@@ -174,17 +174,15 @@ fun StaticHmsMapPreview(
                 }
             }
 
-            // Timeout for map ready (fallback)
             LaunchedEffect(Unit) {
-                delay(5000)  // 5 second timeout
+                delay(5000)
                 if (!mapReady) {
                     Log.e("HmsMapPreview", "Map ready timeout - falling back")
-                    mapInitSuccess = false  // Triggers recompose to fallback
+                    mapInitSuccess = false
                 }
             }
 
             if (mapReady) {
-                // Directions button for Petal Maps
                 ExtendedFloatingActionButton(
                     onClick = {
                         val lat = location.location.latitude
