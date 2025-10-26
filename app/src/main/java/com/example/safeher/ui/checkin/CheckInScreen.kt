@@ -90,6 +90,17 @@ fun LocationSharingSection(
     var showFriendDialog by remember { mutableStateOf(false) }
     var shareMode by remember { mutableStateOf<ShareMode?>(null) }
     var selectedDuration by remember { mutableLongStateOf(0L) }
+    var pendingAction by remember { mutableStateOf<ShareMode?>(null) }
+
+    LaunchedEffect(arePermissionsGranted, pendingAction) {
+        Log.d("LocationSharing", "Permission state changed: $arePermissionsGranted, Pending: $pendingAction")
+        if (arePermissionsGranted && pendingAction != null) {
+            Log.d("LocationSharing", "Permissions granted! Executing pending action: $pendingAction")
+            shareMode = pendingAction
+            showTimerDialog = true
+            pendingAction = null
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -140,14 +151,14 @@ fun LocationSharingSection(
                     ) {
                         Button(
                             onClick = {
-                                Log.d("LocationSharing", "Share Now button CLICKED! Permissions: $arePermissionsGranted")
+                                Log.d("LocationSharing", "Share Now CLICKED! Permissions: $arePermissionsGranted")
                                 if (arePermissionsGranted) {
                                     shareMode = ShareMode.INSTANT
                                     showTimerDialog = true
                                 } else {
-                                    if (permissionState.shouldShowRationale || !permissionState.allPermissionsGranted) {
-                                        permissionState.launchMultiplePermissionRequest()
-                                    }
+
+                                    pendingAction = ShareMode.INSTANT
+                                    permissionState.launchMultiplePermissionRequest()
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -168,6 +179,8 @@ fun LocationSharingSection(
                                     shareMode = ShareMode.DELAYED
                                     showTimerDialog = true
                                 } else {
+
+                                    pendingAction = ShareMode.DELAYED
                                     permissionState.launchMultiplePermissionRequest()
                                 }
                             },
@@ -181,6 +194,15 @@ fun LocationSharingSection(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Share Later")
                         }
+                    }
+
+                    if (pendingAction != null && !arePermissionsGranted) {
+                        Text(
+                            text = "Please grant location permissions to continue",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
 
@@ -319,7 +341,10 @@ fun LocationSharingSection(
     if (showTimerDialog && shareMode != null) {
         TimerSelectionDialog(
             mode = shareMode!!,
-            onDismiss = { showTimerDialog = false },
+            onDismiss = {
+                showTimerDialog = false
+                shareMode = null
+            },
             onConfirm = { minutes ->
                 selectedDuration = minutes
                 showTimerDialog = false
@@ -329,18 +354,22 @@ fun LocationSharingSection(
     }
 
     if (showFriendDialog && shareMode != null) {
-        Log.d("LocationSharingSection", "showing friend dialog")
+        Log.d("LocationSharingSection", "Showing friend dialog for mode: $shareMode")
         FriendSelectionDialog(
             friends = friends,
-            onDismiss = { showFriendDialog = false },
+            onDismiss = {
+                showFriendDialog = false
+                shareMode = null
+            },
             onConfirm = { selectedFriendIds ->
-
+                Log.d("LocationSharingSection", "Starting share: mode=$shareMode, duration=$selectedDuration, friends=$selectedFriendIds")
                 when (shareMode) {
                     ShareMode.INSTANT -> onStartInstant(selectedDuration, selectedFriendIds)
                     ShareMode.DELAYED -> onStartDelayed(selectedDuration, selectedFriendIds)
                     null -> {}
                 }
                 showFriendDialog = false
+                shareMode = null
             }
         )
     }
