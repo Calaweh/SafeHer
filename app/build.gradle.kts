@@ -184,5 +184,6 @@ dependencies {
 //    implementation(libs.dynamicability)
     implementation(libs.location)
     implementation(libs.base)
+    implementation("com.huawei.hms:push:6.13.0.300")
 
 }
