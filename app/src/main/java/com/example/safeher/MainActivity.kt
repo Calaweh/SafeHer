@@ -26,6 +26,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.common.ApiException
+import kotlinx.coroutines.withContext
 
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -41,6 +44,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        getToken()
 
         testRemoteConfig()
 
@@ -179,6 +184,24 @@ class MainActivity : ComponentActivity() {
         } else {
             Log.e(TAG, "No pending intent for HMS update")
             Toast.makeText(this, "Unable to update HMS Core automatically. Please check AppGallery.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun getToken() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val appId = "115664543"
+
+                val token = HmsInstanceId.getInstance(this@MainActivity).getToken(appId, "HCM")
+
+                withContext(Dispatchers.Main) {
+                    if (!token.isNullOrEmpty()) {
+                        Log.i(TAG, "HMS Push Token: $token")
+                    }
+                }
+            } catch (e: ApiException) {
+                Log.e(TAG, "Failed to get HMS token: ${e.message}")
+            }
         }
     }
 }
