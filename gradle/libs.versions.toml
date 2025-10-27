@@ -1,6 +1,6 @@
 [versions]
 agp = "8.11.2"
-base = "6.11.0.302"
+base = "6.13.0.301"
 dynamicability = "1.0.18.300"
 kotlin = "2.2.20"
 coreKtx = "1.17.0"
