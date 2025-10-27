@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -546,12 +547,14 @@ fun CheckInScreenContent(
     Log.d("CheckInScreenContent", "====================")
 
     val permissionsToRequest = remember {
-        mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ).apply {
+        buildList {
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
@@ -560,6 +563,20 @@ fun CheckInScreenContent(
     }
 
     val permissionState = rememberMultiplePermissionsState(permissions = permissionsToRequest)
+
+    val arePermissionsGranted by remember {
+        derivedStateOf {
+            permissionsToRequest.all { permission ->
+                ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!arePermissionsGranted) {
+            permissionState.launchMultiplePermissionRequest()
+        }
+    }
 
     var actualPermissionsGranted by remember { mutableStateOf(false) }
 
@@ -617,8 +634,8 @@ fun CheckInScreenContent(
         Log.d("CheckInScreenContent", "showing location sharing section")
         LocationSharingSection(
             sharingState = sharingState,
-            permissionState = permissionState,  // Passed here
-            arePermissionsGranted = permissionState.allPermissionsGranted,
+            permissionState = permissionState,
+            arePermissionsGranted = arePermissionsGranted,
             friends = friends,
             onStartInstant = onStartInstant,
             onStartDelayed = onStartDelayed,
