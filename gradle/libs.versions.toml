@@ -89,7 +89,6 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.3.0" }
 
 # Media3
-location = { module = "com.huawei.hms:location", version.ref = "location" }
 media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
@@ -108,7 +107,10 @@ huawei-hms-maps = { group = "com.huawei.hms", name = "maps", version.ref = "hms-
 huawei-agconnect-core = { group = "com.huawei.agconnect", name = "agconnect-core", version.ref = "agconnect" }
 
 # GMS Map
-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "maps-compose" }
+#maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "maps-compose" }
+
+# HMS Location
+location = { module = "com.huawei.hms:location", version.ref = "location" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

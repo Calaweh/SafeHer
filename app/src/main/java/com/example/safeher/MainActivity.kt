@@ -1,6 +1,8 @@
 package com.example.safeher
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -9,10 +11,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
@@ -41,20 +51,48 @@ class MainActivity : ComponentActivity() {
         private const val HMS_LOCATION_MODULE = "HwLocationKit"
     }
 
+    private var showBackgroundLocationDialog by mutableStateOf(false)
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted && coarseLocationGranted) {
+            Log.d(TAG, "Location permissions granted")
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                requestBackgroundLocationIfNeeded()
+            }
+        } else {
+            Log.e(TAG, "Location permissions denied")
+            Toast.makeText(this, "Location permissions are required for location sharing", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val backgroundLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d(TAG, "Background location granted")
+        } else {
+            Log.w(TAG, "Background location denied - location sharing may stop when app is closed")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        checkAndRequestLocationPermissions()
 
         getToken()
 
         testRemoteConfig()
 
-        // Add RxJava error handler to prevent crashes from HMS Maps on unsupported architectures or failures
         setupRxJavaErrorHandler()
 
-        // Initialize HMS feature install manager
-
-        // Initialize HMS Maps only on ARM architecture
         val isArmArchitecture = Build.SUPPORTED_ABIS.any { it.contains("arm", ignoreCase = true) }
 
         if (isArmArchitecture) {
@@ -83,6 +121,18 @@ class MainActivity : ComponentActivity() {
                         windowSize = windowSize.widthSizeClass,
                         finishActivity = { finish() }
                     )
+
+                    if (showBackgroundLocationDialog) {
+                        BackgroundLocationDialog(
+                            onDismiss = { showBackgroundLocationDialog = false },
+                            onConfirm = {
+                                showBackgroundLocationDialog = false
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -204,4 +254,67 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun checkAndRequestLocationPermissions() {
+        val fineLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val coarseLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!fineLocation || !coarseLocation) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            // Already have foreground location, check if we need background
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                requestBackgroundLocationIfNeeded()
+            }
+        }
+    }
+
+    private fun requestBackgroundLocationIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val backgroundLocationGranted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!backgroundLocationGranted) {
+                showBackgroundLocationDialog = true
+            }
+        }
+    }
+}
+
+@Composable
+fun BackgroundLocationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Background Location Access") },
+        text = {
+            Text("To share your location continuously, please select 'Allow all the time' in the next screen.")
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Continue")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Skip")
+            }
+        }
+    )
 }
