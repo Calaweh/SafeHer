@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat
 import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.huawei.agconnect.config.AGConnectServicesConfig
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.maps.MapsInitializer
@@ -84,6 +85,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        AGConnectServicesConfig.fromContext(this)
 
         checkAndRequestLocationPermissions()
 
