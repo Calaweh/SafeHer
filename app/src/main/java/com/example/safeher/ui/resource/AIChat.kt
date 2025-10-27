@@ -8,22 +8,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,27 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,24 +30,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.safeher.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AIChat(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    navController: NavController? = null
 ) {
     val context = LocalContext.current
-
     val viewModel: AIChatViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-    var message by remember { mutableStateOf(TextFieldValue("")) }
 
+    var message by remember { mutableStateOf(TextFieldValue("")) }
     val messages by viewModel.messages.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
 
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
 
-    // Auto-scroll to bottom when new message arrives
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -88,10 +55,8 @@ fun AIChat(
     }
 
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            // Top bar
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -100,7 +65,7 @@ fun AIChat(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 8.dp, start = 12.dp, end = 12.dp),
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBackClick) {
@@ -111,17 +76,13 @@ fun AIChat(
                         )
                     }
 
-                    // AI Avatar
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF667EEA),
-                                        Color(0xFF764BA2)
-                                    )
+                                    colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -135,10 +96,9 @@ fun AIChat(
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
-
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "SafeHer AI",
+                            "SafeHer AI",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2D3748)
@@ -151,17 +111,12 @@ fun AIChat(
                                     .background(Color(0xFF48BB78))
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Online",
-                                fontSize = 12.sp,
-                                color = Color(0xFF718096)
-                            )
+                            Text("Always here for you", fontSize = 12.sp, color = Color(0xFF718096))
                         }
                     }
 
-                    // Info Icon
                     IconButton(onClick = {
-                        Toast.makeText(context, "AI-powered emotional support", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "AI-powered emotional support & safety companion", Toast.LENGTH_SHORT).show()
                     }) {
                         Icon(
                             imageVector = Icons.Default.Info,
@@ -173,7 +128,6 @@ fun AIChat(
             }
         },
         bottomBar = {
-            // Input Area
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -187,19 +141,13 @@ fun AIChat(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Text Input
                     OutlinedTextField(
                         value = message,
                         onValueChange = { message = it },
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 48.dp, max = 120.dp),
-                        placeholder = {
-                            Text(
-                                "Type a message...",
-                                color = Color(0xFFA0AEC0)
-                            )
-                        },
+                        placeholder = { Text("Share what's on your mind...", color = Color(0xFFA0AEC0)) },
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF7FAFC),
@@ -210,10 +158,7 @@ fun AIChat(
                         ),
                         trailingIcon = {
                             if (message.text.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { message = TextFieldValue("") },
-                                    modifier = Modifier.size(20.dp)
-                                ) {
+                                IconButton(onClick = { message = TextFieldValue("") }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Clear",
@@ -227,7 +172,6 @@ fun AIChat(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Send Button with animation
                     FloatingActionButton(
                         onClick = {
                             if (message.text.isNotBlank()) {
@@ -235,11 +179,7 @@ fun AIChat(
                                 message = TextFieldValue("")
                             }
                         },
-                        containerColor = if (message.text.isNotBlank()) {
-                            Color(0xFF667EEA)
-                        } else {
-                            Color(0xFFE2E8F0)
-                        },
+                        containerColor = if (message.text.isNotBlank()) Color(0xFF667EEA) else Color(0xFFE2E8F0),
                         contentColor = Color.White,
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -252,18 +192,14 @@ fun AIChat(
                 }
             }
         },
-        containerColor = Color.Transparent // Let the gradient show through
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        // Chat Messages Area with gradient background
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFF5F7FA),
-                            Color(0xFFEDF2F7)
-                        )
+                        colors = listOf(Color(0xFFF5F7FA), Color(0xFFEDF2F7))
                     )
                 )
                 .padding(paddingValues)
@@ -275,14 +211,15 @@ fun AIChat(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(messages) { (text, isUser) ->
-                    EnhancedChatBubble(text = text, isUser = isUser)
+                    EnhancedChatBubble(
+                        text = text,
+                        isUser = isUser,
+                        navController = navController
+                    )
                 }
 
-                // Typing indicator
                 if (isTyping) {
-                    item {
-                        TypingIndicator()
-                    }
+                    item { TypingIndicator() }
                 }
             }
         }
@@ -290,23 +227,80 @@ fun AIChat(
 }
 
 @Composable
-fun EnhancedChatBubble(text: String, isUser: Boolean) {
+fun EnhancedChatBubble(
+    text: String,
+    isUser: Boolean,
+    navController: NavController? = null
+) {
+    // Handle special action buttons - only 2 types
+    when (text) {
+        "__HOTLINE_BUTTON__" -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 48.dp, top = 4.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { navController?.navigate(Screen.ResourcesHub.name) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF667EEA)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF667EEA))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("View Emergency Hotlines", fontWeight = FontWeight.Medium)
+                }
+            }
+            return
+        }
+        "__INSTANT_ALERT_BUTTON__" -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 48.dp, top = 4.dp)
+            ) {
+                Button(
+                    onClick = {
+                        // TODO: Trigger instant alert
+                        navController?.navigate("instant_alert")
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53E3E)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Activate Instant Alert", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            return
+        }
+    }
+
+    // Normal chat bubble
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         if (!isUser) {
-            // AI Avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF667EEA),
-                                Color(0xFF764BA2)
-                            )
+                            colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))
                         )
                     ),
                 contentAlignment = Alignment.Center
@@ -321,7 +315,6 @@ fun EnhancedChatBubble(text: String, isUser: Boolean) {
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Message bubble
         Surface(
             modifier = Modifier.widthIn(max = 280.dp),
             shape = RoundedCornerShape(
@@ -330,11 +323,7 @@ fun EnhancedChatBubble(text: String, isUser: Boolean) {
                 bottomStart = 20.dp,
                 bottomEnd = 20.dp
             ),
-            color = if (isUser) {
-                Color(0xFF667EEA)
-            } else {
-                Color.White
-            },
+            color = if (isUser) Color(0xFF667EEA) else Color.White,
             shadowElevation = if (isUser) 0.dp else 2.dp
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -350,18 +339,16 @@ fun EnhancedChatBubble(text: String, isUser: Boolean) {
                 Text(
                     text = getCurrentTime(),
                     fontSize = 11.sp,
-                    color = if (isUser) {
+                    color = if (isUser)
                         Color.White.copy(alpha = 0.7f)
-                    } else {
+                    else
                         Color(0xFFA0AEC0)
-                    }
                 )
             }
         }
 
         if (isUser) {
             Spacer(modifier = Modifier.width(8.dp))
-            // User Avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -392,10 +379,7 @@ fun TypingIndicator() {
                 .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF667EEA),
-                            Color(0xFF764BA2)
-                        )
+                        listOf(Color(0xFF667EEA), Color(0xFF764BA2))
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -411,7 +395,7 @@ fun TypingIndicator() {
         Spacer(modifier = Modifier.width(8.dp))
 
         Surface(
-            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
+            shape = RoundedCornerShape(20.dp),
             color = Color.White,
             shadowElevation = 2.dp
         ) {
@@ -419,9 +403,7 @@ fun TypingIndicator() {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                repeat(3) { index ->
-                    AnimatedTypingDot(delay = index * 150)
-                }
+                repeat(3) { index -> AnimatedTypingDot(index * 150) }
             }
         }
     }
@@ -449,38 +431,7 @@ fun AnimatedTypingDot(delay: Int) {
     )
 }
 
-// Get current time
 fun getCurrentTime(): String {
-    val calendar = java.util.Calendar.getInstance()
-    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
-    val minute = calendar.get(java.util.Calendar.MINUTE)
-    return String.format("%02d:%02d", hour, minute)
-}
-
-// Simple response generator
-fun generateSimpleResponse(userMessage: String): String {
-    val lowerMessage = userMessage.lowercase()
-
-    return when {
-        "hello" in lowerMessage || "hi" in lowerMessage ->
-            "Hello! 👋 I'm here to help. How are you feeling today?"
-
-        "help" in lowerMessage ->
-            "I'm here to support you. You can talk to me about anything that's on your mind. Would you like to see some helpful resources?"
-
-        "sad" in lowerMessage || "depressed" in lowerMessage ->
-            "I hear you, and I'm sorry you're feeling this way. Would you like to talk more about what's troubling you?"
-
-        "anxious" in lowerMessage || "worried" in lowerMessage ->
-            "It sounds like you're experiencing anxiety. Remember, it's okay to feel this way. Take a deep breath. I'm here to listen."
-
-        "thank" in lowerMessage ->
-            "You're very welcome! 💙 I'm always here if you need someone to talk to."
-
-        "bye" in lowerMessage || "goodbye" in lowerMessage ->
-            "Take care! Remember, I'm here whenever you need me. Stay safe! 🌟"
-
-        else ->
-            "I understand. Thank you for sharing that with me. Can you tell me more about how you're feeling? I'm here to listen without judgment."
-    }
+    val c = java.util.Calendar.getInstance()
+    return String.format("%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
 }
