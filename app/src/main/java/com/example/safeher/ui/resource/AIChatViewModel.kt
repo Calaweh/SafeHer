@@ -20,14 +20,23 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
     private val _isTyping = MutableStateFlow(false)
     val isTyping: StateFlow<Boolean> = _isTyping
 
+    private var helpOfferedCount = 0
+
     private val systemPrompt = """
-        You are SafeHer AI, a compassionate and supportive emotional assistant. 
-        Your goal is to help users who may feel anxious, scared, or sad.
-        1. Always respond empathetically and gently.
-        2. If the message suggests stress, fear, sadness, or danger — offer emotional support and suggest relevant help resources (like mental health hotlines or SafeHer’s Resource Hub).
-        3. If the user expresses distress more than once, suggest activating Instant Alert to notify emergency contacts.
-        4. If the user is neutral or happy, chat normally in a friendly tone.
-        5. Keep responses short and natural, like a human friend.
+        You are SafeHer AI, a compassionate and supportive emotional assistant designed to help women in Malaysia feel safe and supported.
+
+        Guidelines:
+        1. Be warm, empathetic, and human-like in your responses.
+        2. Listen actively and validate their feelings.
+        3. Keep responses conversational and concise (2–3 sentences max).
+        4. Always respond in English only.
+        5. Never be robotic or formal.
+        6. Don't mention hotline numbers or resources explicitly — the app shows buttons.
+        7. Detect the user’s emotion (positive, neutral, negative) from tone and content.
+
+        Response tone rules:
+        - Positive emotion → reply kindly, softly, and encouragingly.
+        - Negative emotion → offer emotional support and gently ask if they need SafeHer’s help or alert options.
     """.trimIndent()
 
     private val chatHistory = mutableListOf<Content>()
@@ -35,12 +44,11 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
 
     init {
         _messages.value = listOf(
-            "Hi! 👋 I'm SafeHer AI, here to support you emotionally. How are you feeling today?" to false
+            "Hi there! 👋 I'm SafeHer AI, always here for you. How are you feeling today?" to false
         )
 
         chatHistory.add(Content(role = "system", parts = listOf(TextPart(systemPrompt))))
 
-        // Fetch API key and initialize model
         viewModelScope.launch {
             val apiKey = RemoteConfigManager.getGeminiApiKey()
             if (apiKey.isNotEmpty()) {
@@ -49,41 +57,110 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
                     apiKey = apiKey
                 )
             } else {
-                _messages.value += "Error: Gemini API key not found in Remote Config." to false
+                _messages.value += "⚠️ I'm having trouble connecting right now. Please check back in a moment." to false
             }
+        }
+    }
+
+    /** Detect emotional tone of user message */
+    private fun detectEmotion(message: String): EmotionType {
+        val lower = message.lowercase()
+
+        val positiveKeywords = listOf("happy", "good", "great", "excited", "thank", "love", "fine", "okay", "better")
+        val negativeKeywords = listOf(
+            "sad", "scared", "afraid", "panic", "anxious", "depressed",
+            "stress", "angry", "hurt", "alone", "bad", "worried", "unsafe",
+            "danger", "attack", "followed", "violence", "cry", "down"
+        )
+
+        return when {
+            positiveKeywords.any { it in lower } -> EmotionType.POSITIVE
+            negativeKeywords.any { it in lower } -> EmotionType.NEGATIVE
+            else -> EmotionType.NEUTRAL
         }
     }
 
     fun sendMessage(userMessage: String) {
         if (userMessage.isBlank()) return
-
         _messages.value = _messages.value + (userMessage to true)
 
         viewModelScope.launch {
             if (geminiModel == null) {
-                _messages.value += "⚠️ AI is still loading. Please try again in a moment." to false
+                _messages.value += "I'm still getting ready. Give me just a moment! ✨" to false
                 return@launch
             }
 
             try {
                 _isTyping.value = true
 
-                val prompt = """
-                    $systemPrompt
+                val emotion = detectEmotion(userMessage)
+                val contextualPrompt = buildString {
+                    append(systemPrompt)
+                    append("\n\nUser message: $userMessage\n")
 
-                    User: $userMessage
-                """.trimIndent()
+                    when (emotion) {
+                        EmotionType.POSITIVE -> append(
+                            "User seems positive. Reply softly, kindly, and with uplifting tone."
+                        )
+                        EmotionType.NEGATIVE -> append(
+                            "User seems upset or distressed. Offer emotional support, validate feelings, " +
+                                    "and ask gently: 'Do you need support from SafeHer's Resource Hub or alert your family and friends anytime you are in danger or emergency?' " +
+                                    "Then stop. Do not suggest resources directly."
+                        )
+                        EmotionType.NEUTRAL -> append(
+                            "User tone is neutral. Respond naturally and friendly in English."
+                        )
+                    }
+                }
 
-                val response = geminiModel?.generateContent(prompt)
-                val reply = response?.text ?: "Hmm, I didn’t quite understand that."
+                val response = geminiModel?.generateContent(contextualPrompt)
+                var reply = response?.text?.trim()
+                    ?: "I'm here for you. Could you tell me more about how you’re feeling?"
+
+                reply = reply.replace("**", "").replace("*", "")
 
                 _messages.value = _messages.value + (reply to false)
 
+                // Button logic
+                when (emotion) {
+                    EmotionType.NEGATIVE -> {
+                        // Offer both support options
+                        _messages.value += ("__HOTLINE_BUTTON__" to false)
+                        _messages.value += ("__INSTANT_ALERT_BUTTON__" to false)
+                        helpOfferedCount++
+                    }
+
+                    EmotionType.NEUTRAL -> {
+                        // Detect direct requests for help
+                        if (userMessage.contains("need resource", true)
+                            || userMessage.contains("want help", true)
+                            || userMessage.contains("alert", true)
+                            || userMessage.contains("family", true)
+                            || userMessage.contains("danger", true)
+                        ) {
+                            _messages.value += (
+                                    "SafeHer has provided hotline resources for you, or you can trigger Instant Alert if you want." to false
+                                    )
+                            _messages.value += ("__HOTLINE_BUTTON__" to false)
+                            _messages.value += ("__INSTANT_ALERT_BUTTON__" to false)
+                            helpOfferedCount++
+                        }
+                    }
+
+                    EmotionType.POSITIVE -> {
+                        // No support buttons, just friendly talk
+                    }
+                }
+
             } catch (e: Exception) {
-                _messages.value = _messages.value + ("Error: ${e.message}" to false)
+                _messages.value += ("I'm having trouble responding right now. Please try again! 🔄" to false)
             } finally {
                 _isTyping.value = false
             }
         }
+    }
+
+    enum class EmotionType {
+        POSITIVE, NEGATIVE, NEUTRAL
     }
 }

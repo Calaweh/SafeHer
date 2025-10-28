@@ -359,7 +359,8 @@ private fun AppScaffold(
             }
             composable("AI Chat") {
                 AIChat(
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    navController = navController
                 )
             }
             composable(Screen.Profile.name) {
