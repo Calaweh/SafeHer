@@ -6,8 +6,8 @@ buildscript {
         maven { url = uri("https://developer.huawei.com/repo/") }
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.11.1")
-        classpath("com.huawei.agconnect:agcp:1.9.3.301")
+        classpath("com.android.tools.build:gradle:8.11.2")
+        classpath(libs.agcp)
     }
 }
 
@@ -16,6 +16,6 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.ksp) apply false
-    alias(libs.plugins.google.services) apply false
+//    alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
 }

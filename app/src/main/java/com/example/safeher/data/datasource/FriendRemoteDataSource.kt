@@ -31,6 +31,7 @@ class FriendRemoteDataSource @Inject constructor(
 
     suspend fun getFriendsByUser(userId: String): Flow<Friends> {
         Log.d("FriendRemoteDataSource", "Getting friends for user: $userId")
+
         return firestore.collection(USER_COLLECTION).document(userId)
             .collection(FRIEND_COLLECTION)
             .whereEqualTo(DELETED_AT_FIELD, null)

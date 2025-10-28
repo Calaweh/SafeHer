@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.Share
@@ -56,10 +57,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -451,7 +454,7 @@ fun Modifier.preventParentScroll() = this.pointerInput(Unit) {
 
 @Composable
 fun CheckInScreen(
-    nagivateToLiveMap: (String) -> Unit,
+    navigateToLiveMap: (String) -> Unit,
     checkInViewModel: CheckInViewModel = hiltViewModel(),
     mapViewModel: MapViewModel = hiltViewModel()
 ) {
@@ -479,7 +482,7 @@ fun CheckInScreen(
         onStartInstant = checkInViewModel::startInstantShare,
         onStartDelayed = checkInViewModel::startDelayedShare,
         onStop = checkInViewModel::stopSharing,
-        nagivateToLiveMap
+        navigateToLiveMap
     )
 }
 
@@ -499,7 +502,7 @@ fun CheckInScreenContent(
     onStartInstant: (Long, List<String>) -> Unit,
     onStartDelayed: (Long, List<String>) -> Unit,
     onStop: () -> Unit,
-    nagivateToLiveMap: (String) -> Unit
+    navigateToLiveMap: (String) -> Unit
 ) {
     var showFriendLocationDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -517,18 +520,18 @@ fun CheckInScreenContent(
         }
     }
 
-    val cpuAbi = remember {
-        val primaryAbi = Build.SUPPORTED_ABIS.firstOrNull() ?: ""
-        val is64BitArm = primaryAbi.startsWith("arm64") || primaryAbi.startsWith("aarch64")
-        val is32BitArm = primaryAbi.startsWith("armeabi")
-        val isX86 = primaryAbi.contains("x86")
-
-        Log.d("CheckInScreenContent", "Primary ABI: $primaryAbi")
-        Log.d("CheckInScreenContent", "All ABIs: ${Build.SUPPORTED_ABIS.joinToString()}")
-        Log.d("CheckInScreenContent", "Is ARM: ${is64BitArm || is32BitArm}, Is x86: $isX86")
-
-        is64BitArm || is32BitArm
-    }
+//    val cpuAbi = remember {
+//        val primaryAbi = Build.SUPPORTED_ABIS.firstOrNull() ?: ""
+//        val is64BitArm = primaryAbi.startsWith("arm64") || primaryAbi.startsWith("aarch64")
+//        val is32BitArm = primaryAbi.startsWith("armeabi")
+//        val isX86 = primaryAbi.contains("x86")
+//
+//        Log.d("CheckInScreenContent", "Primary ABI: $primaryAbi")
+//        Log.d("CheckInScreenContent", "All ABIs: ${Build.SUPPORTED_ABIS.joinToString()}")
+//        Log.d("CheckInScreenContent", "Is ARM: ${is64BitArm || is32BitArm}, Is x86: $isX86")
+//
+//        is64BitArm || is32BitArm
+//    }
 
     val isHmsAvailable = remember {
         val hmsResult = HuaweiApiAvailability.getInstance()
@@ -538,10 +541,8 @@ fun CheckInScreenContent(
         available
     }
 
-    val shouldUseHmsMap = cpuAbi && isHmsAvailable
-
+    val shouldUseHmsMap = isHmsAvailable
     Log.d("CheckInScreenContent", "=== MAP SELECTION ===")
-    Log.d("CheckInScreenContent", "CPU ABI is ARM: $cpuAbi")
     Log.d("CheckInScreenContent", "HMS Available: $isHmsAvailable")
     Log.d("CheckInScreenContent", "Will use HMS Map: $shouldUseHmsMap")
     Log.d("CheckInScreenContent", "====================")
@@ -648,6 +649,20 @@ fun CheckInScreenContent(
                     CircularProgressIndicator()
                 }
             }
+            is UiState.Empty -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Icon(
+                            imageVector = Icons.Default.LocationSearching,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Waiting for GPS signal...", color = Color.Gray, fontSize = 16.sp)
+                    }
+                }
+            }
             is UiState.Error -> {
                 Text(
                     text = locationsUiState.message ?: "Failed to load friend locations.",
@@ -672,14 +687,14 @@ fun CheckInScreenContent(
                         )
                         TextButton(onClick =
                             {
-                                showFriendLocationDialog = true
-//                                val targetUserId = selectedUserId ?: friendLocations.firstOrNull()?.userId
-//                                if (targetUserId != null) {
-//
-//                                    nagivateToLiveMap(targetUserId)
-//                                } else {
-//                                    Toast.makeText(context, "No location available to track", Toast.LENGTH_SHORT).show()
-//                                }
+//                                showFriendLocationDialog = true
+                                val targetUserId = selectedUserId ?: friendLocations.firstOrNull()?.userId
+                                if (targetUserId != null) {
+
+                                    navigateToLiveMap(targetUserId)
+                                } else {
+                                    Toast.makeText(context, "No location available to track", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         ) {
                             Icon(

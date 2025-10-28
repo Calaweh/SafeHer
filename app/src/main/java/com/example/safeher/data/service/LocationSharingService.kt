@@ -23,7 +23,10 @@ import com.example.safeher.data.model.LocationSharingState
 import com.example.safeher.data.model.SharingMode
 import com.example.safeher.data.repository.LocationSharingRepository
 import com.example.safeher.utils.ILocationProvider
+import com.huawei.hms.api.ConnectionResult
+import com.huawei.hms.api.HuaweiApiAvailability
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -56,11 +59,19 @@ class LocationSharingService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        Log.d("LocationSharingService", "Service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         val sharedWithIds = intent?.getStringArrayListExtra(EXTRA_SHARED_WITH_IDS) ?: emptyList()
+
+        val hmsResult = HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(this)
+        if (hmsResult != ConnectionResult.SUCCESS) {
+            Log.e("LocationSharingService", "HMS Core unavailable: $hmsResult")
+            stopServiceAndSharing()
+            return START_STICKY
+        }
 
         when (intent?.action) {
             ACTION_START_INSTANT -> {
@@ -80,9 +91,7 @@ class LocationSharingService : LifecycleService() {
     }
 
     private fun startInstantSharing(durationMinutes: Long, sharedWithIds: List<String>) {
-
-        Log.d("LocationSharingService","start instant location sharing")
-
+        Log.d("LocationSharingService", "start instant location sharing")
         stopCurrentTask()
         val durationMillis = TimeUnit.MINUTES.toMillis(durationMinutes)
 
@@ -101,7 +110,6 @@ class LocationSharingService : LifecycleService() {
                 }
             }.start()
         } else {
-            // Indefinite: Start updates without timer, but keep notification
             repository.updateState(LocationSharingState(SharingMode.SHARING, 0, 0))
         }
 
@@ -109,9 +117,7 @@ class LocationSharingService : LifecycleService() {
     }
 
     private fun startDelayedSharing(delayMinutes: Long, sharedWithIds: List<String>) {
-
-        Log.d("LocationSharingService","start delayed location sharing")
-
+        Log.d("LocationSharingService", "start delayed location sharing")
         stopCurrentTask()
         val delayMillis = TimeUnit.MINUTES.toMillis(delayMinutes)
 
@@ -133,30 +139,27 @@ class LocationSharingService : LifecycleService() {
     }
 
     private fun startLocationUpdates(sharedWithIds: List<String>) {
-
-        Log.d("LocationSharingService", "startLocationUpdates called")
-
         if (locationJob?.isActive == true) return
-
         if (!hasLocationPermissions()) {
             Log.e("LocationSharingService", "Missing location permissions")
             stopServiceAndSharing()
             return
         }
 
-        locationJob = lifecycleScope.launch {
-            val user = withTimeoutOrNull(5000) { userDataSource.userState.first { it != null } }
+        locationJob = lifecycleScope.launch(Dispatchers.IO) {
+            val user = withTimeoutOrNull(5_000) {
+                userDataSource.userState.first { it != null }
+            }
             if (user == null) {
                 Log.e("LocationSharingService", "User not available")
                 stopServiceAndSharing()
                 return@launch
             }
 
-            Log.d("LocationSharingService", "User available: ${user.id}. Starting updates.")
-
+            Log.d("LocationSharingService", "User ${user.id} – starting updates")
             try {
                 locationProvider.getLocationUpdates().collect { location ->
-                    Log.d("LocationSharingService", "Updating location")
+                    // Firestore write – already on IO
                     locationDataSource.updateUserLocation(
                         userId = user.id,
                         displayName = user.displayName,
@@ -167,7 +170,7 @@ class LocationSharingService : LifecycleService() {
                     )
                 }
             } catch (e: Exception) {
-                Log.e("LocationSharingService", "Location updates failed: ${e.message}")
+                Log.e("LocationSharingService", "Location updates failed", e)
                 stopServiceAndSharing()
             }
         }
@@ -175,16 +178,19 @@ class LocationSharingService : LifecycleService() {
 
     private fun hasLocationPermissions(): Boolean {
         val fineLocation = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            this, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-
         val coarseLocation = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            this, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-
-        return fineLocation && coarseLocation
+        val backgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        return fineLocation && coarseLocation && backgroundLocation
     }
 
     private fun updateNotification() {
@@ -231,7 +237,7 @@ class LocationSharingService : LifecycleService() {
                 val seconds = TimeUnit.MILLISECONDS.toSeconds(state.timeLeftInMillis) % 60
                 text = "Sharing will start in ${String.format("%02d:%02d", minutes, seconds)}"
             }
-            else -> { // IDLE
+            else -> {
                 title = "SafeHer"
                 text = "Location sharing is idle."
             }
@@ -246,9 +252,9 @@ class LocationSharingService : LifecycleService() {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Replace with your own icon
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(openAppPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "Cancel & Stop", stopPendingIntent) // Replace with icon
+            .addAction(R.drawable.ic_launcher_foreground, "Cancel & Stop", stopPendingIntent)
             .setOngoing(true)
             .build()
     }
@@ -265,7 +271,7 @@ class LocationSharingService : LifecycleService() {
 
     override fun onBind(intent: Intent): IBinder? {
         super.onBind(intent)
-        return null // Not a bound service
+        return null
     }
 
     override fun onDestroy() {

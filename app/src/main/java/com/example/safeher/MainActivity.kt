@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
+import com.google.firebase.FirebaseApp
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.huawei.agconnect.config.AGConnectServicesConfig
 import com.huawei.hms.api.ConnectionResult
@@ -40,6 +41,7 @@ import kotlinx.coroutines.tasks.await
 import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.common.ApiException
 import kotlinx.coroutines.withContext
+import com.google.firebase.FirebaseOptions
 
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -85,6 +87,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val options = FirebaseOptions.Builder()
+            .setApiKey("AIzaSyBTc8kXha7RFq6-yW_VaIWKB7dLosNFkgA")
+            .setApplicationId("1:616469505955:android:d486bf511d0b0ed01cdc16")
+            .setProjectId("safeher-a2f47")
+            .setStorageBucket("safeher-a2f47.firebasestorage.app")
+            .build()
+
+        FirebaseApp.initializeApp(this, options)
 
         AGConnectServicesConfig.fromContext(this)
 

@@ -30,12 +30,26 @@
                 "lastUpdated" to FieldValue.serverTimestamp(),
                 "sharedWith" to sharedWithFriendIds
             )
-            locationDoc.set(locationData).await()
+            try {
+                locationDoc.set(locationData).await()
+            } catch (e: Exception) {
+                Log.e("LocationRemoteDataSource", "Failed to update location: ${e.message}", e)
+            }
         }
 
         suspend fun stopSharingLocation(userId: String) {
             val locationDoc = firestore.collection(LOCATION_COLLECTION).document(userId)
-            locationDoc.update("isSharing", false).await()
+            try {
+                val snapshot = locationDoc.get().await()
+                if (snapshot.exists()) {
+                    locationDoc.update("isSharing", false).await()
+                    Log.d("LocationRemoteDataSource", "Stopped sharing location for user: $userId")
+                } else {
+                    Log.w("LocationRemoteDataSource", "No location document found for user: $userId")
+                }
+            } catch (e: Exception) {
+                Log.e("LocationRemoteDataSource", "Failed to stop sharing location: ${e.message}", e)
+            }
         }
 
         fun getFriendsLocations(friendUserIds: List<String>): Flow<List<LiveLocation>> {
