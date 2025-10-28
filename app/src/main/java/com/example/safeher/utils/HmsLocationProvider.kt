@@ -5,43 +5,20 @@ import android.content.Context
 import android.location.Location
 import android.os.Looper
 import android.util.Log
-import com.huawei.hmf.tasks.Task
-import com.huawei.hms.location.FusedLocationProviderClient
-import com.huawei.hms.location.LocationAvailability
-import com.huawei.hms.location.LocationCallback
-import com.huawei.hms.location.LocationRequest
-import com.huawei.hms.location.LocationResult
-import com.huawei.hms.location.LocationServices
-import com.huawei.hms.location.LocationSettingsRequest
-import com.huawei.hms.location.LocationSettingsResponse
-import com.huawei.hms.location.LocationSettingsStates
-import com.huawei.hms.location.LocationSettingsStatusCodes
-import com.huawei.hms.location.SettingsClient
+import com.example.safeher.utils.ILocationProvider
+import com.huawei.hms.location.*
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-
-suspend fun <T> Task<T>.awaitHms(): T = suspendCancellableCoroutine { cont ->
-    addOnSuccessListener { result ->
-        cont.resume(result)
-    }
-    addOnFailureListener { exception ->
-        cont.resumeWithException(exception)
-    }
-    addOnCanceledListener {
-        cont.cancel(CancellationException("Task cancelled"))
-    }
-    cont.invokeOnCancellation {
-        cancel()
-    }
-}
 
 class HmsLocationProvider @Inject constructor(
     @ApplicationContext private val context: Context
@@ -49,12 +26,10 @@ class HmsLocationProvider @Inject constructor(
 
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
-    private val settingsClient: SettingsClient =
-        LocationServices.getSettingsClient(context)
 
     @SuppressLint("MissingPermission")
     override fun getLocationUpdates(): Flow<Location> = callbackFlow {
-        Log.d("HmsLocationProvider", "getting location updates")
+        Log.d("HmsLocationProvider", "Getting location updates (HMS)")
 
         val locationRequest = LocationRequest.create().apply {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
@@ -62,27 +37,12 @@ class HmsLocationProvider @Inject constructor(
             fastestInterval = 5000L
         }
 
-        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
-        try {
-            val response: LocationSettingsResponse = settingsClient.checkLocationSettings(builder.build()).awaitHms()
-            val states: LocationSettingsStates = response.locationSettingsStates
-            if (!states.isLocationUsable) {
-                close(Exception("Location services unavailable"))
-                return@callbackFlow
-            }
-        } catch (e: Exception) {
-            val statusCode = (e as? com.huawei.hms.common.ApiException)?.statusCode
-            if (statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED) {
-                Log.e("HmsLocationProvider", "Location settings resolution required")
-
-            }
-            close(e)
-            return@callbackFlow
-        }
+        Log.d("HmsLocationProvider", "Starting location call back")
 
         val locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
+                    Log.d("HmsLocationProvider", "Location: ${location.latitude}, ${location.longitude}")
                     trySend(location)
                 } ?: Log.w("HmsLocationProvider", "No location in result")
             }
@@ -95,15 +55,49 @@ class HmsLocationProvider @Inject constructor(
             }
         }
 
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            Looper.getMainLooper()
-        )
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper()
+            )
+            Log.d("HmsLocationProvider", "HMS location updates started successfully")
+        } catch (e: Exception) {
+            Log.e("HmsLocationProvider", "Failed to start HMS location updates", e)
+            close(e)
+        }
 
         awaitClose {
-            Log.d("HmsLocationProvider", "stopping location updates")
+            Log.d("HmsLocationProvider", "Stopping location updates")
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    override suspend fun getLastKnownLocation(): Location? = withContext(Dispatchers.IO) {
+        Log.d("HmsLocationProvider", "getLastKnownLocation() CALLED")
+        try {
+            val location = fusedLocationClient.lastLocation.awaitHms()
+            Log.d("HmsLocationProvider", "getLastKnownLocation() SUCCESS: $location")
+            location
+        } catch (e: Exception) {
+            Log.e("HmsLocationProvider", "getLastKnownLocation() FAILED", e)
+            null
+        }
+    }
+}
+
+suspend fun <T> com.huawei.hmf.tasks.Task<T>.awaitHms(): T = suspendCancellableCoroutine { cont ->
+    addOnSuccessListener { result ->
+        cont.resume(result)
+    }
+    addOnFailureListener { exception ->
+        cont.resumeWithException(exception)
+    }
+    addOnCanceledListener {
+        cont.cancel(CancellationException("Task cancelled"))
+    }
+    cont.invokeOnCancellation {
+        cancel()
     }
 }

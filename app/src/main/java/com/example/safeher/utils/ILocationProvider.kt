@@ -5,4 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface ILocationProvider {
     fun getLocationUpdates(): Flow<Location>
+
+    suspend fun getLastKnownLocation(): Location?
 }
