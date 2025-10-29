@@ -52,7 +52,7 @@ fun ExploreScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         CheckInScreen(
-            nagivateToLiveMap = { userId ->
+            navigateToLiveMap = { userId ->
                 navController.navigate("liveMap/$userId")
             }
         )

@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services)
+//    alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.compose.compiler)
     id("com.huawei.agconnect")
@@ -177,12 +177,16 @@ dependencies {
 //    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     // HMS
-    implementation(libs.huawei.hms.maps)
-//    implementation(libs.huawei.hms.maps.compose)
+//    implementation(libs.hms.bom)
+//    implementation(libs.huawei.hms.maps)
     implementation(libs.huawei.agconnect.core)
-//    implementation(libs.dynamicability)
-    implementation(libs.location)
+//    implementation(libs.location)
+    implementation(libs.location.v403301)
+    implementation(libs.maps.v510300)
     implementation(libs.base)
     implementation("com.huawei.hms:push:6.13.0.300")
+//    implementation(libs.hianalytics)
 
+    implementation(libs.rxjava3)
+    implementation(libs.rxandroid3)
 }
