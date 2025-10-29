@@ -25,13 +25,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.safeher.ui.me.MeViewModel
 import com.example.safeher.ui.navigation.Screen
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,11 +55,17 @@ fun AIChat(
 
     val listState = rememberLazyListState()
 
+    val meViewModel: MeViewModel = hiltViewModel()
+    val meUiState by meViewModel.uiState.collectAsState()
+    val userImage = meUiState.user?.imageUrl
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
+
+    val inputBarHeight = 88.dp
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -130,8 +143,7 @@ fun AIChat(
         bottomBar = {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .imePadding(),
+                    .fillMaxWidth(),
                 color = Color.White,
                 shadowElevation = 8.dp
             ) {
@@ -207,14 +219,21 @@ fun AIChat(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = inputBarHeight // ✅ keeps bottom spacing stable
+                ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(messages) { (text, isUser) ->
+                items(messages) { msg ->
                     EnhancedChatBubble(
-                        text = text,
-                        isUser = isUser,
-                        navController = navController
+                        text = msg.text,
+                        isUser = msg.isUser,
+                        timestamp = msg.timeMillis,
+                        navController = navController,
+                        userImageUrl = if (msg.isUser) userImage else null
                     )
                 }
 
@@ -230,8 +249,14 @@ fun AIChat(
 fun EnhancedChatBubble(
     text: String,
     isUser: Boolean,
-    navController: NavController? = null
+    timestamp: Long,
+    navController: NavController? = null,
+    userImageUrl: String? = null
 ) {
+    val timeFormatted = remember(timestamp) {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+    }
+
     // Handle special action buttons - only 2 types
     when (text) {
         "__HOTLINE_BUTTON__" -> {
@@ -337,7 +362,7 @@ fun EnhancedChatBubble(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = getCurrentTime(),
+                    text = timeFormatted,
                     fontSize = 11.sp,
                     color = if (isUser)
                         Color.White.copy(alpha = 0.7f)
@@ -349,19 +374,30 @@ fun EnhancedChatBubble(
 
         if (isUser) {
             Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFEDF2F7)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "You",
-                    tint = Color(0xFF718096),
-                    modifier = Modifier.size(18.dp)
+            if (!userImageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = userImageUrl,
+                    contentDescription = "User Profile Picture",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEDF2F7)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "You",
+                        tint = Color(0xFF718096),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
