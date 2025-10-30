@@ -5,6 +5,8 @@ import android.util.Log
 import coil.Coil
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
@@ -17,6 +19,16 @@ class SafeHerApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         try {
             super.onCreate()
+
+            val options = FirebaseOptions.Builder()
+                .setApiKey("AIzaSyBTc8kXha7RFq6-yW_VaIWKB7dLosNFkgA")
+                .setApplicationId("1:616469505955:android:d486bf511d0b0ed01cdc16")
+                .setProjectId("safeher-a2f47")
+                .setStorageBucket("safeher-a2f47.firebasestorage.app")
+                .build()
+
+            FirebaseApp.initializeApp(this, options)
+
             Coil.setImageLoader(newImageLoader())
             Log.d("SafeHerApplication", "Global ImageLoader set: ${Coil.imageLoader(this)}")
         } catch (e: Exception) {
@@ -28,8 +40,10 @@ class SafeHerApplication : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         try {
             val imageLoader = imageLoaderProvider.get()
+            Log.d("SafeHerApplication", "newImageLoader")
             return imageLoader
         } catch (e: Exception) {
+            Log.e("SafeHerApplication", "Error in newImageLoader: ${e.message}", e)
             return ImageLoader.Builder(this).build()
         }
     }

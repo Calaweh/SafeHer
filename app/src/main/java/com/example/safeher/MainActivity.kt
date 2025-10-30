@@ -88,15 +88,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val options = FirebaseOptions.Builder()
-            .setApiKey("AIzaSyBTc8kXha7RFq6-yW_VaIWKB7dLosNFkgA")
-            .setApplicationId("1:616469505955:android:d486bf511d0b0ed01cdc16")
-            .setProjectId("safeher-a2f47")
-            .setStorageBucket("safeher-a2f47.firebasestorage.app")
-            .build()
-
-        FirebaseApp.initializeApp(this, options)
-
         AGConnectServicesConfig.fromContext(this)
 
         checkAndRequestLocationPermissions()
