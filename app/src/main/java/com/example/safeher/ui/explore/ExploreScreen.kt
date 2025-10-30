@@ -26,17 +26,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.navigation.Screen
 
 @Composable
 fun ExploreScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: ExploreViewModel = hiltViewModel()
 ) {
     val scrollState = rememberScrollState()
 
@@ -47,7 +50,11 @@ fun ExploreScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        EmergencySection(navController)
+        EmergencySection(
+            onInstantAlertClick = { viewModel.sendInstantAlert() },
+            onCall999Click = { /* TODO */ },
+            onCheckInClick = { /* TODO */ }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -60,7 +67,11 @@ fun ExploreScreen(
 }
 
 @Composable
-fun EmergencySection(navController: NavController) {
+fun EmergencySection(
+    onInstantAlertClick: () -> Unit,
+    onCall999Click: () -> Unit,
+    onCheckInClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -80,9 +91,8 @@ fun EmergencySection(navController: NavController) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // The main "Instant Alert" button
             Button(
-                onClick = { /* TODO: Implement Instant Alert logic */ },
+                onClick = onInstantAlertClick,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,15 +105,14 @@ fun EmergencySection(navController: NavController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Row for the other two emergency options
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                OutlinedButton(onClick = { /* TODO: Implement Call 999 logic */ }) {
+                OutlinedButton(onClick = onCall999Click) {
                     Text("Call 999 Now")
                 }
-                OutlinedButton(onClick = { navController.navigate(Screen.CheckIn.name) }) {
+                OutlinedButton(onClick = onCheckInClick) {
                     Text("Check-In Timer")
                 }
             }

@@ -40,6 +40,9 @@
         </activity>
 
         <service
+            android:name=".data.service.AlertService"
+            android:exported="false" />
+        <service
             android:name=".data.service.LocationSharingService"
             android:foregroundServiceType="location"
             android:exported="false" />
