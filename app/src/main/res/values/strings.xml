@@ -12,6 +12,7 @@
     <string name="profile_screen_title">Profile</string>
     <string name="map_screen_title">Map</string>
     <string name="alert_detail_screen_title">Emergency Alert</string>
+    <string name="alert_history_screen_title">Alert History</string>
 
     <!-- Error Message -->
     <string name="generic_error">An unknown error occurred.</string>

@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.navigation.Screen
+import androidx.compose.material.icons.filled.History
 
 @Composable
 fun ExploreScreen(
@@ -90,6 +91,17 @@ fun ExploreScreen(
             },
             onCheckInClick = { /* TODO */ }
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate(com.example.safeher.ui.navigation.Screen.AlertHistory.name) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.History, contentDescription = "Alert History")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("View Alert History")
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

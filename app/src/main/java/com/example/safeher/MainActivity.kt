@@ -47,7 +47,6 @@ import kotlinx.coroutines.withContext
 import com.google.firebase.FirebaseOptions
 import javax.inject.Inject
 
-
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -91,6 +90,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d(TAG, "Notification permission granted")
+            Toast.makeText(this, "You'll now receive emergency alerts", Toast.LENGTH_SHORT).show()
+        } else {
+            Log.w(TAG, "Notification permission denied")
+            Toast.makeText(this, "Enable notifications to receive emergency alerts", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -98,6 +109,7 @@ class MainActivity : ComponentActivity() {
         AGConnectServicesConfig.fromContext(this)
 
         checkAndRequestLocationPermissions()
+        checkAndRequestNotificationPermission()
 
         getToken()
 
@@ -308,6 +320,22 @@ class MainActivity : ComponentActivity() {
             // Already have foreground location, check if we need background
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 requestBackgroundLocationIfNeeded()
+            }
+        }
+    }
+
+    private fun checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d(TAG, "Notification permission already granted")
+                }
+                else -> {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
     }
