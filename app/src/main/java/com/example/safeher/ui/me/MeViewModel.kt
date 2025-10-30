@@ -77,7 +77,7 @@ constructor(
         }
     }
 
-    fun updateProfile(newName: String, newImageUrl: String, newImageUri: Uri?) {
+    fun updateProfile(newName: String, newImageUrl: String, newContactNumber: String, newImageUri: Uri?) {
         viewModelScope.launch {
             val user = _uiState.value.user
             if (user == null) {
@@ -92,8 +92,16 @@ constructor(
             _updateState.value = UpdateProfileState.Loading
 
             try {
-                userRepository.updateProfile(user.id, newName, newImageUrl, newImageUri)
-                fetchCurrentUser()
+                // Update user profile with contact number
+                userRepository.updateProfile(
+                    user.id,
+                    newName,
+                    newContactNumber,
+                    newImageUrl,
+                    newImageUri
+                )
+
+                fetchCurrentUser() // refresh user data
                 val updatedUser = userRepository.getUser(user.id)
                 _uiState.value = _uiState.value.copy(user = updatedUser)
 
@@ -103,6 +111,7 @@ constructor(
             }
         }
     }
+
 
     fun resetUpdateState() {
         _updateState.value = UpdateProfileState.Idle

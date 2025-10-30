@@ -15,9 +15,11 @@
 
     <!-- Error Message -->
     <string name="generic_error">An unknown error occurred.</string>
-    <string name="invalid_email">The email provided is not valid.</string>
-    <string name="invalid_password">Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, and a number.</string>
-    <string name="passwords_do_not_match">Passwords do not match.</string>
+    <string name="invalid_full_name">Please enter your full name</string>
+    <string name="invalid_email">Please enter a valid email</string>
+    <string name="invalid_phone">Please enter a valid phone number</string>
+    <string name="invalid_password">Password must have at least 8 characters, including uppercase, lowercase, and number</string>
+    <string name="passwords_do_not_match">Passwords do not match</string>
 
     <!-- Sign In/Up/Out and Forgot Password -->
     <string name="email">Email</string>

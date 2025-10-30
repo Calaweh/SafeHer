@@ -124,7 +124,7 @@ fun ProfileContent(
     user: User,
     deleteState: DeleteAccountState,
     updateState: UpdateProfileState,
-    onUpdateProfile: (name: String, imageUrl: String, imageUri: Uri?) -> Unit,
+    onUpdateProfile: (name: String, imageUrl: String, contactNumber: String, imageUri: Uri?) -> Unit,
     onDeleteAccount: () -> Unit,
     onSignOutClick: () -> Unit
 ) {
@@ -168,8 +168,8 @@ fun ProfileContent(
                 updateState = updateState,
                 selectedImageUri = selectedImageUri,
                 onSelectImageClick = { imagePickerLauncher.launch("image/*") },
-                onSaveChanges = { newName, newUrl ->
-                    onUpdateProfile(newName, newUrl, selectedImageUri)
+                onSaveChanges = { newName, newContact, newUrl, imageUri ->
+                    onUpdateProfile(newName, newUrl, newContact, selectedImageUri)
                 },
                 onCancel = {
                     isInEditMode = false
@@ -254,11 +254,12 @@ fun EditProfileView(
     updateState: UpdateProfileState,
     selectedImageUri: Uri?,
     onSelectImageClick: () -> Unit,
-    onSaveChanges: (name: String, imageUrl: String) -> Unit,
+    onSaveChanges: (name: String, contactNumber: String, imageUrl: String, imageUri: Uri?) -> Unit,
     onCancel: () -> Unit
 ) {
     var name by remember(user.displayName) { mutableStateOf(user.displayName) }
     var imageUrl by remember(user.imageUrl) { mutableStateOf(user.imageUrl) }
+    var contactNumber by remember(user.contactNumber) { mutableStateOf(user.contactNumber) }
     val context = LocalContext.current
 
     LaunchedEffect(updateState) {
@@ -282,25 +283,14 @@ fun EditProfileView(
         )
         Spacer(Modifier.height(16.dp))
 
-        // URL Image
-//        OutlinedTextField(
-//            value = imageUrl,
-//            onValueChange = { imageUrl = it },
-//            label = { Text("Image URL") },
-//            modifier = Modifier.fillMaxWidth(),
-//            enabled = selectedImageUri == null // Disable if a local file is chosen
-//        )
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            verticalAlignment = Alignment.CenterVertically,
-//            horizontalArrangement = Arrangement.Center
-//        ) {
-//            Divider(modifier = Modifier.weight(1f))
-//            Text("OR", modifier = Modifier.padding(horizontal = 8.dp))
-//            Divider(modifier = Modifier.weight(1f))
-//        }
+        OutlinedTextField(
+            value = contactNumber,
+            onValueChange = { contactNumber = it },
+            label = { Text("Contact Number") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(16.dp))
 
-        // Fetch Image from Device
         Button(
             onClick = onSelectImageClick,
             modifier = Modifier.fillMaxWidth()
@@ -320,7 +310,7 @@ fun EditProfileView(
         Spacer(Modifier.height(16.dp))
         Row {
             Button(
-                onClick = { onSaveChanges(name, imageUrl) },
+                onClick = { onSaveChanges(name, contactNumber, imageUrl, selectedImageUri) },
                 enabled = updateState !is UpdateProfileState.Loading
             ) {
                 if (updateState is UpdateProfileState.Loading) {
@@ -351,6 +341,11 @@ fun DisplayProfileView(user: User, onEditClick: () -> Unit) {
     }
     Text(
         text = user.email,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Text(
+        text = user.contactNumber,
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

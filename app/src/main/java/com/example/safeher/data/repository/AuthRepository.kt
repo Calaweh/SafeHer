@@ -42,8 +42,8 @@ class AuthRepository @Inject constructor(
         startAlertService()
     }
 
-    suspend fun signUp(email: String, password: String) {
-        authRemoteDataSource.createUser(email, password)
+    suspend fun signUp(email: String, password: String, name: String, contactNumber: String) {
+        authRemoteDataSource.createUser(email, password, name, contactNumber)
         startAlertService()
     }
 

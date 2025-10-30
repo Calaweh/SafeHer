@@ -54,6 +54,7 @@ class UserRepository @Inject constructor(
     suspend fun updateProfile(
         userId: String,
         newName: String,
+        newContactNumber: String,
         newImageUrl: String?,
         newImageUri: Uri?
     ) {
@@ -62,7 +63,6 @@ class UserRepository @Inject constructor(
         val finalImageUrl = if (newImageUri != null) {
             try {
                 val mediaId = mediaRemoteDataSource.uploadImageFromUri(newImageUri, userId)
-
                 "${MediaRemoteDataSource.MEDIA_ID_PREFIX}$mediaId"
             } catch (e: Exception) {
                 Log.e("UserRepository", "Failed to upload profile image via MediaRemoteDataSource", e)
@@ -74,11 +74,11 @@ class UserRepository @Inject constructor(
 
         val updates = mapOf(
             "displayName" to newName,
-            "imageUrl" to finalImageUrl
+            "imageUrl" to finalImageUrl,
+            "contactNumber" to newContactNumber // added
         )
 
         usersCollection.document(userId).update(updates).await()
-
     }
 
     suspend fun cancelCurrentUserSubscription() {

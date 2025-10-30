@@ -30,7 +30,7 @@ fun StandardButton(
             .padding(horizontal = 24.dp),
         onClick = onButtonClick,
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = containerColor,
+            containerColor = Color(0xFF9F9CF3),
             contentColor = Color.White
         ),
         border = BorderStroke(1.dp, containerColor),
