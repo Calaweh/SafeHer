@@ -176,7 +176,7 @@ fun SignUpScreenContent(
 @Preview(showSystemUi = true)
 @Composable
 fun SignUpScreenPreview() {
-    SafeHerTheme (darkTheme = true) {
+    SafeHerTheme {
         SignUpScreenContent(
             signUp = { _, _, _, _ -> },
             openSignInScreen = {},

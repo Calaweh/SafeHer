@@ -44,6 +44,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -68,6 +69,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.draw.shadow
 
 // Data class for hotlines
 data class Hotline(
@@ -93,7 +98,7 @@ fun ResourceHubScreen(
     viewModel: ResourceHubViewModel = viewModel() // Inject the ViewModel
 ) {
     val scrollState = rememberScrollState()
-    val alertRed = Color(0xFFD32F2F)
+    val alertRed = MaterialTheme.colorScheme.error
 
     // Collect state from the ViewModel. The UI will automatically recompose when these change.
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -101,22 +106,60 @@ fun ResourceHubScreen(
     val favoriteIds by viewModel.favoriteIds.collectAsState()
     val filteredHotlines by viewModel.filteredHotlines.collectAsState()
 
-    // Derive UI-specific lists from the collected state
-    val favoriteHotlines = filteredHotlines.filter { favoriteIds.contains(it.id) }
-    val otherHotlines = filteredHotlines.filter { !favoriteIds.contains(it.id) }
+    var showEmergencyBanner by remember { mutableStateOf(true) }
+
+    val categoryPriority = listOf(
+        HotlineCategory.EMERGENCY,
+        HotlineCategory.MEDICAL,
+        HotlineCategory.MENTAL_HEALTH,
+        HotlineCategory.SUPPORT,
+        HotlineCategory.CYBER
+    )
+
+    // Sort hotlines by priority (red first)
+    val sortedHotlines = filteredHotlines.sortedBy { categoryPriority.indexOf(it.category) }
+
+    val favoriteHotlines = sortedHotlines.filter { favoriteIds.contains(it.id) }
+    val otherHotlines = sortedHotlines.filter { !favoriteIds.contains(it.id) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onStartChat,
-                containerColor = Color(0xFF667EEA),
-                contentColor = Color.White
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                ),
+                containerColor = Color.Transparent // Important for gradient background
             ) {
-                Icon(imageVector = Icons.Default.SmartToy, contentDescription = "AI Chat")
+                Box(
+                    modifier = Modifier
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF4A90E2), // SafeHer Blue
+                                    Color(0xFF8E6CE8), // SafeHer Purple
+                                    Color(0xFF4DD0AE)  // SafeHer Green
+                                )
+                            ),
+                            shape = RoundedCornerShape(16.dp) // <-- changed here only
+                        )
+                        .size(56.dp), // same FAB size
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SmartToy,
+                        contentDescription = "AI Chat",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         },
-        containerColor = Color(0xFFF5F7FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -125,39 +168,51 @@ fun ResourceHubScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
+
             // Emergency Alert Banner
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
-                elevation = CardDefaults.cardElevation(4.dp)
-            ) {
-                Row(
+            if (showEmergencyBanner) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = alertRed,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "In Crisis?",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = alertRed
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = alertRed,
+                            modifier = Modifier.size(32.dp)
                         )
-                        Text(
-                            "Help is available 24/7. Tap any service below.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF5D4037)
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "In Crisis?",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = alertRed
+                            )
+                            Text(
+                                "Help is available 24/7. Tap any service below.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { showEmergencyBanner = false }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Close",
+                                tint = alertRed
+                            )
+                        }
                     }
                 }
             }
@@ -173,7 +228,7 @@ fun ResourceHubScreen(
                         onStartChat()
                     },
                 shape = RoundedCornerShape(12.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
             ) {
                 Row(
@@ -189,8 +244,9 @@ fun ResourceHubScreen(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        Color(0xFF667EEA),
-                                        Color(0xFF764BA2)
+                                        Color(0xFF4A90E2), // SafeHer Blue
+                                        Color(0xFF8E6CE8), // SafeHer Purple
+                                        Color(0xFF4DD0AE)  // SafeHer Green (subtle third tone)
                                     )
                                 )
                             ),
@@ -199,7 +255,7 @@ fun ResourceHubScreen(
                         Icon(
                             imageVector = Icons.Default.SmartToy,
                             contentDescription = "AI",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -209,45 +265,60 @@ fun ResourceHubScreen(
                             "AI Emotional Support",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
-                            color = Color(0xFF2D3748)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             "Chat with AI • Emotion detection",
                             fontSize = 12.sp,
-                            color = Color(0xFF718096)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Open Chat",
-                        tint = Color(0xFF667EEA)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
             // Search Bar
-            OutlinedTextField(
+            TextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                placeholder = { Text("Search hotlines...", fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .shadow(2.dp, RoundedCornerShape(10.dp)) // <--- adds shadow
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                placeholder = {
+                    Text(
+                        "Search hotline title/related keywords...",
+                        fontSize = 12.sp
+                    )
+                },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.primary)},
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(Icons.Default.Clear, "Clear")
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
                         }
                     }
                 },
                 shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedBorderColor = Color(0xFF667EEA),
-                    unfocusedBorderColor = Color(0xFFE2E8F0)
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    errorIndicatorColor = Color.Transparent
                 ),
                 singleLine = true
             )
+
 
             val categories = listOf(
                 "All" to null,
@@ -268,8 +339,24 @@ fun ResourceHubScreen(
                         label = { Text(label, fontSize = 12.sp) },
                         leadingIcon = if (selectedCategory == category) {
                             { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
-                        } else null
+                        } else null,
+                        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,      // 💙 blue background when selected
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,        // white text
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,              // light bg when unselected
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,         // normal text color
+                            iconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (selectedCategory == category)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            else
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
+
                 }
             }
 
@@ -279,7 +366,7 @@ fun ResourceHubScreen(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFA000))
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFA500))
                     Spacer(Modifier.width(6.dp))
                     Text("Favorites", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
@@ -303,7 +390,7 @@ fun ResourceHubScreen(
                     text = if (favoriteHotlines.isEmpty() && selectedCategory == null) "All Hotlines" else "Results",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2D3748)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -311,7 +398,7 @@ fun ResourceHubScreen(
                 Text(
                     text = "No results found.",
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally)
                 )
             } else {
@@ -348,7 +435,7 @@ fun HotlineItem(
             ) { expanded = !expanded }
             .animateContentSize(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFavorite) Color(0xFFFFF9E6) else Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(10.dp)
@@ -363,7 +450,7 @@ fun HotlineItem(
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Star else Icons.Default.StarBorder,
                         contentDescription = "Toggle Favorite",
-                        tint = if (isFavorite) Color(0xFFFFA000) else Color.Gray
+                        tint = if (isFavorite) Color(0xFFFFA500) else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Icon(
@@ -373,7 +460,7 @@ fun HotlineItem(
             }
             if (expanded) {
                 Spacer(Modifier.height(10.dp))
-                Text(hotline.description, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp)
+                Text(hotline.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 18.sp)
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = {

@@ -94,8 +94,12 @@ fun AIChat(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(
-                                Brush.linearGradient(
-                                    colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF4A90E2), // SafeHer Blue
+                                        Color(0xFF8E6CE8), // SafeHer Purple
+                                        Color(0xFF4DD0AE)  // SafeHer Green
+                                    )
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -144,7 +148,7 @@ fun AIChat(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth(),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.background,
                 shadowElevation = 8.dp
             ) {
                 Row(
@@ -204,15 +208,13 @@ fun AIChat(
                 }
             }
         },
-        containerColor = Color.Transparent
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF5F7FA), Color(0xFFEDF2F7))
-                    )
+                    MaterialTheme.colorScheme.background
                 )
                 .padding(paddingValues)
         ) {
@@ -324,8 +326,12 @@ fun EnhancedChatBubble(
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(
-                        Brush.linearGradient(
-                            colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF4A90E2), // SafeHer Blue
+                                Color(0xFF8E6CE8), // SafeHer Purple
+                                Color(0xFF4DD0AE)  // SafeHer Green
+                            )
                         )
                     ),
                 contentAlignment = Alignment.Center
