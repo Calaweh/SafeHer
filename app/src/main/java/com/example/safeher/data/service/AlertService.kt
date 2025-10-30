@@ -39,12 +39,9 @@ class AlertService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
 
         startForeground(NOTIFICATION_ID, createForegroundNotification())
-
         Log.d(TAG, "AlertService started.")
 
-        if (alertListenerJob == null) {
-            startListeningForAlerts()
-        }
+        startListeningForAlerts()
 
         return START_STICKY
     }
@@ -55,16 +52,19 @@ class AlertService : LifecycleService() {
         alertListenerJob = lifecycleScope.launch {
             authRepository.currentUserIdFlow.collectLatest { userId ->
                 if (userId != null) {
+                    Log.d(TAG, "Starting alert listener for user: $userId")
+
                     alertRepository.getNewAlerts(userId).collect { alerts ->
                         alerts.forEach { alert ->
-                            Log.d(TAG, "New alert received with ID: ${alert.id}")
+                            Log.d(TAG, "New alert received from: ${alert.senderName} (ID: ${alert.id})")
                             showAlertNotification(alert)
 
                             alertRepository.deleteAlert(userId, alert.id)
                         }
                     }
                 } else {
-                    Log.d(TAG, "No user logged in, stopping listener.")
+                    Log.d(TAG, "No user logged in, stopping listener and service.")
+                    stopSelf()
                 }
             }
         }
@@ -81,12 +81,13 @@ class AlertService : LifecycleService() {
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("EMERGENCY ALERT!")
-            .setContentText("${alert.senderName} needs help. Check on them immediately!")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentTitle("🚨 EMERGENCY ALERT!")
+            .setContentText("${alert.senderName} needs help immediately!")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000))
             .build()
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
@@ -97,10 +98,11 @@ class AlertService : LifecycleService() {
         createNotificationChannel(notificationManager)
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("SafeHer is Active")
-            .setContentText("Listening for emergency alerts in the background.")
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Replace with a proper icon
+            .setContentTitle("SafeHer Protection Active")
+            .setContentText("Monitoring for emergency alerts")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
             .build()
     }
 
@@ -111,7 +113,9 @@ class AlertService : LifecycleService() {
                 "Emergency Alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Channel for receiving emergency alerts from friends."
+                description = "Receive emergency alerts from your friends"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 500, 1000)
             }
             notificationManager.createNotificationChannel(channel)
         }

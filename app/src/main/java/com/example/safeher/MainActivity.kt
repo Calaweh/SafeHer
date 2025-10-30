@@ -2,6 +2,7 @@ package com.example.safeher
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,14 +19,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.example.safeher.data.repository.AuthRepository
+import com.example.safeher.data.service.AlertService
 import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
-import com.google.firebase.FirebaseApp
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.huawei.agconnect.config.AGConnectServicesConfig
 import com.huawei.hms.api.ConnectionResult
@@ -42,6 +45,7 @@ import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.common.ApiException
 import kotlinx.coroutines.withContext
 import com.google.firebase.FirebaseOptions
+import javax.inject.Inject
 
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -53,6 +57,9 @@ class MainActivity : ComponentActivity() {
         private const val HMS_MAP_MODULE = "HwMapKit"
         private const val HMS_LOCATION_MODULE = "HwLocationKit"
     }
+
+    @Inject
+    lateinit var authRepository: AuthRepository
 
     private var showBackgroundLocationDialog by mutableStateOf(false)
 
@@ -88,17 +95,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val options = FirebaseOptions.Builder()
-            .setApiKey("AIzaSyBTc8kXha7RFq6-yW_VaIWKB7dLosNFkgA")
-            .setApplicationId("1:616469505955:android:d486bf511d0b0ed01cdc16")
-            .setProjectId("safeher-a2f47")
-            .setStorageBucket("safeher-a2f47.firebasestorage.app")
-            .build()
-
-        FirebaseApp.initializeApp(this, options)
-
-        AGConnectServicesConfig.fromContext(this)
-
         checkAndRequestLocationPermissions()
 
         getToken()
@@ -126,6 +122,19 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier) {
                     val windowSize = calculateWindowSizeClass(this)
 
+                    LaunchedEffect(Unit) {
+                        try {
+                            if (authRepository.currentUser != null) {
+                                Log.d(TAG, "User already logged in, starting AlertService")
+                                startAlertService()
+                            } else {
+                                Log.d(TAG, "No user logged in, AlertService will start after login")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error checking auth status: ${e.message}", e)
+                        }
+                    }
+
                     // Only check for HMS Core updates on ARM devices
                     if (isArmArchitecture) {
                         checkAndPromptForHmsCoreUpdate()
@@ -150,6 +159,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // ✅ HELPER FUNCTION TO START ALERT SERVICE
+    private fun startAlertService() {
+        val intent = Intent(this, AlertService::class.java)
+        startService(intent)
     }
 
     private fun testRemoteConfig() {

@@ -22,20 +22,19 @@ class AlertRepository @Inject constructor(
         val collectionPath = "alerts/$userId/pending_alerts"
         val collectionRef = firestore.collection(collectionPath)
 
-        val listenerRegistration: ListenerRegistration =
-            collectionRef.addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e(TAG, "Error listening for alerts", error)
-                    close(error)
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null) {
-                    val alerts = snapshot.documents.mapNotNull { it.toObject<Alert>() }
-                    trySend(alerts)
-                    Log.d(TAG, "Received ${alerts.size} new alerts for user $userId")
-                }
+        val listenerRegistration: ListenerRegistration = collectionRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e(TAG, "Error listening for alerts", error)
+                close(error)
+                return@addSnapshotListener
             }
+
+            if (snapshot != null) {
+                val alerts = snapshot.documents.mapNotNull { it.toObject<Alert>() }
+                trySend(alerts)
+                Log.d(TAG, "Received ${alerts.size} alert(s) for user $userId")
+            }
+        }
 
         awaitClose {
             Log.d(TAG, "Closing alerts listener for user $userId")
