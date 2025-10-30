@@ -28,6 +28,12 @@ import kotlinx.coroutines.tasks.await
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import com.example.safeher.data.model.AlertHistory
+import com.example.safeher.data.model.AlertType
+import com.example.safeher.data.model.AlertStatus
+import com.example.safeher.data.repository.AlertHistoryRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
@@ -35,24 +41,55 @@ class ExploreViewModel @Inject constructor(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
     private val firestore: FirebaseFirestore,
+    private val alertHistoryRepository: AlertHistoryRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val TAG = "ExploreViewModel"
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
 
-    // State for showing messages to the user
     private val _alertMessage = MutableStateFlow<AlertMessage?>(null)
     val alertMessage: StateFlow<AlertMessage?> = _alertMessage.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    fun sendInstantAlert() {
+    private val _countdownSeconds = MutableStateFlow<Int?>(null)
+    val countdownSeconds: StateFlow<Int?> = _countdownSeconds.asStateFlow()
+
+    private var countdownJob: Job? = null
+
+    fun startAlertCountdown() {
+        cancelCountdown()
+
+        countdownJob = viewModelScope.launch {
+            try {
+                for (i in 5 downTo 1) {
+                    _countdownSeconds.value = i
+                    delay(1000)
+                }
+
+                _countdownSeconds.value = null
+                sendInstantAlert()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Countdown error", e)
+                _countdownSeconds.value = null
+            }
+        }
+    }
+
+    fun cancelCountdown() {
+        countdownJob?.cancel()
+        countdownJob = null
+        _countdownSeconds.value = null
+        _alertMessage.value = AlertMessage.Warning("Alert cancelled")
+    }
+
+    private fun sendInstantAlert() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Check location permission
                 if (!hasLocationPermission()) {
                     _alertMessage.value = AlertMessage.Warning("Location permission is required to send your location with the alert.")
                     _isLoading.value = false
@@ -104,6 +141,24 @@ class ExploreViewModel @Inject constructor(
                         .add(alert)
                         .await()
 
+                    val alertHistory = AlertHistory(
+                        senderId = currentUserProfile.id,
+                        senderName = currentUserProfile.displayName,
+                        receiverId = friend.id,
+                        receiverName = friend.displayName,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        locationName = locationName,
+                        type = AlertType.SENT,
+                        status = AlertStatus.DELIVERED
+                    )
+
+                    Log.d(TAG, "💾 SAVING SENT ALERT:")
+                    Log.d(TAG, "  Sender: ${alertHistory.senderId} (${alertHistory.senderName})")
+                    Log.d(TAG, "  Receiver: ${alertHistory.receiverId} (${alertHistory.receiverName})")
+                    Log.d(TAG, "  Type: ${alertHistory.type}")
+
+                    alertHistoryRepository.saveAlertHistory(alertHistory)
                     Log.d(TAG, "Successfully created alert with location for friend: ${friend.displayName}")
                 }
 

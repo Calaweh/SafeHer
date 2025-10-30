@@ -20,6 +20,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.safeher.data.model.AlertHistory
+import com.example.safeher.data.model.AlertType
+import com.example.safeher.data.model.AlertStatus
+import com.example.safeher.data.repository.AlertHistoryRepository
+import com.example.safeher.data.repository.UserRepository
+import kotlinx.coroutines.runBlocking
 
 @AndroidEntryPoint
 class AlertService : LifecycleService() {
@@ -29,6 +35,12 @@ class AlertService : LifecycleService() {
 
     @Inject
     lateinit var alertRepository: AlertRepository
+
+    @Inject
+    lateinit var alertHistoryRepository: AlertHistoryRepository
+
+    @Inject
+    lateinit var userRepository: UserRepository
 
     private var alertListenerJob: Job? = null
     private val TAG = "AlertService"
@@ -54,10 +66,37 @@ class AlertService : LifecycleService() {
                 if (userId != null) {
                     Log.d(TAG, "Starting alert listener for user: $userId")
 
+                    val currentUserProfile = userRepository.getUser(userId)
+                    val currentUserName = currentUserProfile?.displayName ?: "Unknown"
+
                     alertRepository.getNewAlerts(userId).collect { alerts ->
                         alerts.forEach { alert ->
                             Log.d(TAG, "New alert received from: ${alert.senderName} at ${alert.locationName}")
                             showAlertNotification(alert)
+
+                            val currentUserProfile = userRepository.getUser(userId)
+                            val currentUserName = currentUserProfile?.displayName ?: "Unknown"
+
+                            val alertHistory = AlertHistory(
+                                senderId = alert.senderId,
+                                senderName = alert.senderName,
+                                receiverId = userId,
+                                receiverName = currentUserName,
+                                latitude = alert.latitude,
+                                longitude = alert.longitude,
+                                locationName = alert.locationName,
+                                type = AlertType.RECEIVED,
+                                status = AlertStatus.DELIVERED
+                            )
+
+                            Log.d(TAG, "💾 SAVING RECEIVED ALERT:")
+                            Log.d(TAG, "  Sender: ${alertHistory.senderId} (${alertHistory.senderName})")
+                            Log.d(TAG, "  Receiver: ${alertHistory.receiverId} (${alertHistory.receiverName})")
+                            Log.d(TAG, "  Type: ${alertHistory.type}")
+
+                            runBlocking {
+                                alertHistoryRepository.saveAlertHistory(alertHistory)
+                            }
 
                             alertRepository.deleteAlert(userId, alert.id)
                         }

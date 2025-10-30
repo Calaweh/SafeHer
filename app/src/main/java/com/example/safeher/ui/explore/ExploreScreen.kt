@@ -2,6 +2,8 @@ package com.example.safeher.ui.explore
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,6 +50,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.navigation.Screen
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun ExploreScreen(
@@ -59,6 +66,7 @@ fun ExploreScreen(
 
     val alertMessage by viewModel.alertMessage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val countdownSeconds by viewModel.countdownSeconds.collectAsState()
 
     LaunchedEffect(alertMessage) {
         alertMessage?.let { message ->
@@ -81,7 +89,7 @@ fun ExploreScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         EmergencySection(
-            onInstantAlertClick = { viewModel.sendInstantAlert() },
+            onInstantAlertClick = { viewModel.startAlertCountdown() },
             onCall999Click = {
                 val intent = Intent(Intent.ACTION_DIAL).apply {
                     data = Uri.parse("tel:999")
@@ -90,6 +98,17 @@ fun ExploreScreen(
             },
             onCheckInClick = { /* TODO */ }
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate(com.example.safeher.ui.navigation.Screen.AlertHistory.name) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.History, contentDescription = "Alert History")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("View Alert History")
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -115,7 +134,81 @@ fun ExploreScreen(
                 }
             )
         }
+        if (countdownSeconds != null) {
+            CountdownDialog(
+                secondsRemaining = countdownSeconds!!,
+                onCancel = { viewModel.cancelCountdown() }
+            )
+        }
     }
+}
+
+@Composable
+fun CountdownDialog(
+    secondsRemaining: Int,
+    onCancel: () -> Unit
+) {
+    // Animate progress
+    val progress by animateFloatAsState(
+        targetValue = (6 - secondsRemaining) / 5f,
+        animationSpec = tween(durationMillis = 300),
+        label = "countdown_progress"
+    )
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        icon = {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(80.dp),
+                    strokeWidth = 6.dp,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Text(
+                    text = secondsRemaining.toString(),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        title = {
+            Text(
+                "Sending Emergency Alert",
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Your emergency alert will be sent to all your friends in $secondsRemaining second${if (secondsRemaining != 1) "s" else ""}.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Tap Cancel to stop",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(Icons.Default.Cancel, contentDescription = "Cancel")
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("CANCEL", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
 
 @Composable
