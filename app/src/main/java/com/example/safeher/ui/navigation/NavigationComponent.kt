@@ -1,5 +1,7 @@
 package com.example.safeher.ui.navigation
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.tween
@@ -62,6 +64,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
+import com.example.safeher.ui.alert.AlertDetailScreen
 import com.example.safeher.ui.explore.ExploreScreen
 import com.example.safeher.ui.forgotpassword.ForgotPasswordScreen
 import com.example.safeher.ui.friends.FriendsScreen
@@ -75,6 +78,7 @@ import com.example.safeher.ui.splash.SplashScreenContent
 import com.example.safeher.ui.splash.SplashViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Date
 
 enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),
@@ -87,7 +91,8 @@ enum class Screen(@StringRes val title: Int) {
     Splash(R.string.splash_screen_title),
     Friends(R.string.friends_screen_title),
     FirebaseSearch(R.string.firebase_search_screen_title),
-    CheckIn(R.string.check_in_screen_title)
+    CheckIn(R.string.check_in_screen_title),
+    AlertDetail(R.string.alert_detail_screen_title)
 }
 
 data class MainNavItem(
@@ -99,7 +104,8 @@ data class MainNavItem(
 @Composable
 fun App(
     windowSize: WindowWidthSizeClass,
-    finishActivity: () -> Unit
+    finishActivity: () -> Unit,
+    notificationIntent: Intent? = null
 ){
     val splashViewModel: SplashViewModel = hiltViewModel()
     val userState by splashViewModel.userState.collectAsState()
@@ -118,7 +124,8 @@ fun App(
             MainAppLayout(
                 windowSize = windowSize,
                 isLoggedIn = userState != null,
-                showSplash = showSplash
+                showSplash = showSplash,
+                notificationIntent = notificationIntent
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -134,7 +141,8 @@ fun App(
 fun MainAppLayout(
     windowSize: WindowWidthSizeClass,
     isLoggedIn: Boolean,
-    showSplash: Boolean = false
+    showSplash: Boolean = false,
+    notificationIntent: Intent? = null
 ) {
     val navController = rememberNavController()
     val startDestination = if (isLoggedIn) Screen.Explore.name else Screen.SignIn.name
@@ -205,7 +213,8 @@ fun MainAppLayout(
                 showBottomBar = !isTablet,
                 shouldShowNavigationUi = shouldShowNavigationUi,
                 startDestination = startDestination,
-                showSplash = showSplash
+                showSplash = showSplash,
+                notificationIntent = notificationIntent
             )
         }
     }
@@ -221,6 +230,7 @@ private fun AppScaffold(
     shouldShowNavigationUi: Boolean,
     startDestination: String,
     showSplash: Boolean = false,
+    notificationIntent: Intent? = null
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -406,7 +416,54 @@ private fun AppScaffold(
                     )
                 }
             }
+            composable(
+                route = "alertDetail/{alertId}/{senderId}/{senderName}/{latitude}/{longitude}/{locationName}",
+                arguments = listOf(
+                    navArgument("alertId") { type = NavType.StringType },
+                    navArgument("senderId") { type = NavType.StringType },
+                    navArgument("senderName") { type = NavType.StringType },
+                    navArgument("latitude") { type = NavType.StringType },
+                    navArgument("longitude") { type = NavType.StringType },
+                    navArgument("locationName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alertId = backStackEntry.arguments?.getString("alertId") ?: ""
+                val senderId = backStackEntry.arguments?.getString("senderId") ?: ""
+                val senderName = backStackEntry.arguments?.getString("senderName") ?: ""
+                val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull() ?: 0.0
+                val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull() ?: 0.0
+                val locationName = backStackEntry.arguments?.getString("locationName") ?: ""
+
+                AlertDetailScreen(
+                    alertId = alertId,
+                    senderId = senderId,
+                    senderName = senderName,
+                    latitude = latitude,
+                    longitude = longitude,
+                    locationName = locationName,
+                    timestamp = Date(),
+                    onBackClick = { navController.navigateUp() }
+                )
+            }
+        }
+
+        LaunchedEffect(notificationIntent) {
+            notificationIntent?.extras?.let { extras ->
+                val alertId = extras.getString("alertId")
+                val senderId = extras.getString("senderId")
+                val senderName = extras.getString("senderName")
+                val latitude = extras.getDouble("latitude", 0.0)
+                val longitude = extras.getDouble("longitude", 0.0)
+                val locationName = extras.getString("locationName", "")
+
+                if (alertId != null && senderId != null && senderName != null) {
+                    // Small delay to ensure NavHost is fully initialized
+                    kotlinx.coroutines.delay(100)
+                    val route = "alertDetail/$alertId/$senderId/${Uri.encode(senderName)}/$latitude/$longitude/${Uri.encode(locationName)}"
+                    navController.navigate(route)
+                    Log.d("AppScaffold", "Navigating to alert from notification: $route")
+                }
+            }
         }
     }
 }
-

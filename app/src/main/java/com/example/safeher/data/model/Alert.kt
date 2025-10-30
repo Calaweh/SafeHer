@@ -8,8 +8,11 @@ data class Alert(
     @DocumentId val id: String = "",
     val senderId: String = "",
     val senderName: String = "",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val locationName: String = "",
     @ServerTimestamp
     val timestamp: Date? = null
 ) {
-    constructor() : this("", "", "", null)
+    constructor() : this("", "", "", 0.0, 0.0, "", null)
 }
