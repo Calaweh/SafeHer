@@ -93,7 +93,7 @@ constructor(
 
             try {
                 userRepository.updateProfile(user.id, newName, newImageUrl, newImageUri)
-
+                fetchCurrentUser()
                 val updatedUser = userRepository.getUser(user.id)
                 _uiState.value = _uiState.value.copy(user = updatedUser)
 
