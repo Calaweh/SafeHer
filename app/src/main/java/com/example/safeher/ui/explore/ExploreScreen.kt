@@ -51,22 +51,31 @@ import androidx.navigation.NavController
 import com.example.safeher.ui.checkin.CheckInScreen
 import com.example.safeher.ui.navigation.Screen
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextAlign
+import com.example.safeher.ui.checkintimer.CheckInTimerOverlay
+import com.example.safeher.ui.checkintimer.CheckInTimerScreen
+import com.example.safeher.ui.checkintimer.CheckInTimerViewModel
 
 @Composable
 fun ExploreScreen(
     navController: NavController,
-    viewModel: ExploreViewModel = hiltViewModel()
+    viewModel: ExploreViewModel = hiltViewModel(),
+    checkInTimerViewModel: CheckInTimerViewModel = hiltViewModel()
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var showCheckInTimerSetup by remember { mutableStateOf(false) }
 
     val alertMessage by viewModel.alertMessage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val countdownSeconds by viewModel.countdownSeconds.collectAsState()
+    val isTimerActive by checkInTimerViewModel.timerStateManager.isTimerActive.collectAsState()
 
     LaunchedEffect(alertMessage) {
         alertMessage?.let { message ->
@@ -96,7 +105,12 @@ fun ExploreScreen(
                 }
                 context.startActivity(intent)
             },
-            onCheckInClick = { /* TODO */ }
+            onCheckInClick = {
+                if (!isTimerActive) {
+                    showCheckInTimerSetup = true
+                }
+            },
+            isTimerActive = isTimerActive
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -140,6 +154,17 @@ fun ExploreScreen(
                 onCancel = { viewModel.cancelCountdown() }
             )
         }
+        if (showCheckInTimerSetup) {
+            CheckInTimerScreen(
+                onDismiss = {
+                    showCheckInTimerSetup = false
+                }
+            )
+        }
+
+        if (isTimerActive) {
+            CheckInTimerOverlay(viewModel = checkInTimerViewModel)
+        }
     }
 }
 
@@ -148,7 +173,6 @@ fun CountdownDialog(
     secondsRemaining: Int,
     onCancel: () -> Unit
 ) {
-    // Animate progress
     val progress by animateFloatAsState(
         targetValue = (6 - secondsRemaining) / 5f,
         animationSpec = tween(durationMillis = 300),
@@ -216,7 +240,8 @@ fun EmergencySection(
     onInstantAlertClick: () -> Unit,
     onCall999Click: () -> Unit,
     onCheckInClick: () -> Unit,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    isTimerActive: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -261,13 +286,38 @@ fun EmergencySection(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(onClick = onCall999Click) {
-                    Text("Call 999 Now")
+                OutlinedButton(
+                    onClick = onCall999Click,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Call 999")
                 }
-                OutlinedButton(onClick = onCheckInClick) {
-                    Text("Check-In Timer")
+
+                OutlinedButton(
+                    onClick = onCheckInClick,
+                    modifier = Modifier.weight(1f),
+                    colors = if (isTimerActive) {
+                        ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        ButtonDefaults.outlinedButtonColors()
+                    }
+                ) {
+                    if (isTimerActive) {
+                        Icon(
+                            Icons.Default.Timer,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Active", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        Text("Check-In Timer")
+                    }
                 }
             }
         }
