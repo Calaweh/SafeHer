@@ -46,6 +46,11 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         <service
+            android:name=".data.service.CheckInTimerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+        <service
             android:name=".data.service.LocationSharingService"
             android:foregroundServiceType="location"
             android:exported="false" />
