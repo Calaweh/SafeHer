@@ -695,14 +695,14 @@ fun CheckInScreenContent(
                         )
                         TextButton(onClick =
                             {
-//                                showFriendLocationDialog = true
-                                val targetUserId = selectedUserId ?: friendLocations.firstOrNull()?.userId
-                                if (targetUserId != null) {
-
-                                    navigateToLiveMap(targetUserId)
-                                } else {
-                                    Toast.makeText(context, "No location available to track", Toast.LENGTH_SHORT).show()
-                                }
+                                showFriendLocationDialog = true
+//                                val targetUserId = selectedUserId ?: friendLocations.firstOrNull()?.userId
+//                                if (targetUserId != null) {
+//
+//                                    navigateToLiveMap(targetUserId)
+//                                } else {
+//                                    Toast.makeText(context, "No location available to track", Toast.LENGTH_SHORT).show()
+//                                }
                             }
                         ) {
                             Icon(

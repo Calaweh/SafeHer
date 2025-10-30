@@ -156,7 +156,8 @@ private fun ForgotPasswordScreenContent(
                 Text(
                     text = stringResource(R.string.back_to_sign_in),
                     textAlign = TextAlign.Center,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onTertiary
                 )
             }
             Spacer(Modifier.height(24.dp))

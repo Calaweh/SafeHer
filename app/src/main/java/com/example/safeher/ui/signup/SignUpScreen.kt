@@ -165,7 +165,7 @@ fun SignUpScreenContent(
                     text = stringResource(R.string.sign_in_text),
                     textAlign = TextAlign.Center,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.onTertiary
                 )
             }
             Spacer(Modifier.height(24.dp))

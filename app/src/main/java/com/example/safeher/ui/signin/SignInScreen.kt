@@ -98,7 +98,7 @@ fun SignInScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()), // Makes the whole screen scrollable
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // --- Logo Section ---
@@ -150,13 +150,12 @@ fun SignInScreenContent(
 
             Spacer(Modifier.weight(1f))
 
-            // --- Bottom Links Section ---
             TextButton(onClick = openSignUpScreen) {
                 Text(
                     text = stringResource(R.string.sign_up_text),
                     textAlign = TextAlign.Center,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.onTertiary
                 )
             }
             TextButton(onClick = openForgotPasswordScreen) {
@@ -164,7 +163,7 @@ fun SignInScreenContent(
                     text = stringResource(R.string.forgot_password_text),
                     textAlign = TextAlign.Center,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.onTertiary
                 )
             }
             Spacer(Modifier.height(24.dp))

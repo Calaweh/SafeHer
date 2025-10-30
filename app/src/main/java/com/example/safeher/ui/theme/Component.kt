@@ -39,7 +39,8 @@ fun StandardButton(
         Text(
             text = stringResource(label),
             fontSize = 16.sp,
-            modifier = Modifier.padding(vertical = 6.dp)
+            modifier = Modifier.padding(vertical = 6.dp),
+            color = MaterialTheme.colorScheme.onTertiary
         )
     }
 }
