@@ -83,6 +83,7 @@ import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -467,6 +468,13 @@ fun CheckInScreen(
     val friendTrackingInfo by mapViewModel.friendTrackingInfo.collectAsState()
     val trackedFriendIds by mapViewModel.trackedFriendIds.collectAsState()
     val selectedUserId by mapViewModel.selectedUserId.collectAsState()
+
+    LaunchedEffect(sharingState.mode) {
+        if (sharingState.mode == SharingMode.SHARING) {
+            delay(500)
+            mapViewModel.updateSelectedUser(mapViewModel.selectedUserId.value)
+        }
+    }
 
     CheckInScreenContent(
         sharingState = sharingState,

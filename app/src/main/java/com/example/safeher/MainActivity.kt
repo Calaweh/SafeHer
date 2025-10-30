@@ -95,6 +95,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        AGConnectServicesConfig.fromContext(this)
+
         checkAndRequestLocationPermissions()
 
         getToken()

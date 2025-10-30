@@ -76,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -85,6 +86,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -93,6 +95,7 @@ import coil.compose.AsyncImage
 import com.example.safeher.R
 import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.Friends
+import com.example.safeher.ui.theme.SafeHerTheme
 import kotlin.math.roundToInt
 
 @Composable
@@ -401,16 +404,28 @@ fun TabSelector(
             )
             .padding(4.dp)
     ) {
+//        Box(
+//            modifier = Modifier
+//                .fillMaxHeight()
+//                .width(indicatorWidth)
+//                .offset { IntOffset(indicatorOffset.roundToInt(), 0) }
+//                .background(
+//                    color = MaterialTheme.colorScheme.primary,
+//                    shape = RoundedCornerShape(12.dp)
+//                )
+//                .shadow(4.dp, RoundedCornerShape(12.dp))
+//        )
+
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(indicatorWidth)
                 .offset { IntOffset(indicatorOffset.roundToInt(), 0) }
+                .shadow(4.dp, RoundedCornerShape(12.dp))
                 .background(
                     color = MaterialTheme.colorScheme.primary,
                     shape = RoundedCornerShape(12.dp)
                 )
-                .shadow(4.dp, RoundedCornerShape(12.dp))
         )
 
         Row(
@@ -461,8 +476,10 @@ fun TabButton(
                 indication = null,
                 onClick = onClick
             )
+
             .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
+
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -577,7 +594,7 @@ fun FriendRequestItem(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                             shape = CircleShape
                         ),
-                    placeholder = painterResource(R.drawable.ic_launcher_foreground),
+                    placeholder = painterResource(R.mipmap.ic_launcher_foreground),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -666,53 +683,143 @@ fun FriendRequestItem(
     }
 }
 
-//@Preview(showSystemUi = true)
-//@Composable
-//fun FriendsScreenPreview() {
-//    SafeHerTheme (darkTheme = false) {
-//        FriendsScreenContent(
-//            friends = Friends(
-//                friends = listOf(
-//                    Friend(
-//                        id = "1",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John Doe",
-//                    ),
-//                    Friend(
-//                        id = "3",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John Doe",
-//                    ),
-//                    Friend(
-//                        id = "4",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John hh",
-//                    ),
-//                    Friend(
-//                        id = "5",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John hh",
-//                    ),
-//                    Friend(
-//                        id = "6",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John hh",
-//                    ),
-//                    Friend(
-//                        id = "7",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "John hh",
-//                    ),
-//                    ),
-//                requestList = listOf(
-//                    Friend(
-//                        id = "2",
-//                        imageUrl = "https://example.com/avatar1.jpg",
-//                        displayName = "666",
-//                    )
-//                )
-//            ),
-//            modifier = Modifier
-//        )
-//    }
-//}
+@Preview(showBackground = true)
+@Composable
+fun TabButtonSelectedPreview() {
+    SafeHerTheme {
+        TabButton(
+            label = "Requests",
+            count = 5,
+            isSelected = true,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TabButtonUnselectedPreview() {
+    SafeHerTheme {
+        TabButton(
+            label = "Friends",
+            count = 0,
+            isSelected = false,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TabSelectorPreview() {
+    SafeHerTheme {
+        TabSelector(
+            selectedTab = 0,
+            onTabClick = {},
+            labels = listOf("Your Friends", "Requests", "Sent Requests"),
+            counts = listOf(12, 3, 2)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TabSelectorRequestsSelectedPreview() {
+    SafeHerTheme {
+        TabSelector(
+            selectedTab = 1,
+            onTabClick = {},
+            labels = listOf("Your Friends", "Requests", "Sent Requests"),
+            counts = listOf(5, 7, 1)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FriendRequestItemFriendPreview() {
+    SafeHerTheme {
+        FriendRequestItem(
+            item = Friend(
+                id = "1",
+                documentId = "doc1",
+                displayName = "Emma Wilson",
+                imageUrl = ""
+            ),
+            isFriendMode = true,
+            onAccept = {},
+            onReject = {},
+            onRemove = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FriendRequestItemIncomingRequestPreview() {
+    SafeHerTheme {
+        FriendRequestItem(
+            item = Friend(
+                id = "2",
+                documentId = "doc2",
+                displayName = "John Doe",
+                imageUrl = ""
+            ),
+            isFriendMode = false,
+            isSentRequestMode = false,
+            onAccept = {},
+            onReject = {},
+            onRemove = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FriendRequestItemSentRequestPreview() {
+    SafeHerTheme {
+        FriendRequestItem(
+            item = Friend(
+                id = "3",
+                documentId = "doc3",
+                displayName = "Sarah Connor",
+                imageUrl = ""
+            ),
+            isFriendMode = false,
+            isSentRequestMode = true,
+            onAccept = {},
+            onReject = {},
+            onRemove = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FriendsScreenContentPreview() {
+    SafeHerTheme {
+        FriendsScreenContent(
+            friends = Friends(
+                friends = listOf(
+                    Friend(id = "1", documentId = "doc1", displayName = "Alice Johnson", imageUrl = ""),
+                    Friend(id = "2", documentId = "doc2", displayName = "Bob Smith", imageUrl = "")
+                ),
+                requestList = listOf(
+                    Friend(id = "3", documentId = "doc3", displayName = "Charlie Brown", imageUrl = "")
+                ),
+                sentRequestList = listOf(
+                    Friend(id = "4", documentId = "doc4", displayName = "Diana Prince", imageUrl = "")
+                )
+            ),
+            error = null,
+            addFriendSuccess = false,
+            onAccept = {},
+            onReject = {},
+            onRemove = {},
+            onAddFriend = {},
+            onClearError = {},
+            onResetAddFriendSuccess = {},
+            modifier = Modifier
+        )
+    }
+}

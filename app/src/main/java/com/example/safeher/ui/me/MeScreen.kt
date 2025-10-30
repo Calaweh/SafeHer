@@ -150,13 +150,13 @@ fun ProfileContent(
         Spacer(Modifier.height(32.dp))
 
         AsyncImage(
-            model = user.imageUrl.ifEmpty { R.drawable.ic_launcher_foreground },
+            model = user.imageUrl.ifEmpty { R.mipmap.ic_launcher_foreground },
             contentDescription = "Profile Picture",
             modifier = Modifier
                 .size(120.dp)
                 .clip(MaterialTheme.shapes.medium),
-            placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
-            error = painterResource(id = R.drawable.ic_launcher_foreground),
+            placeholder = painterResource(id = R.mipmap.ic_launcher_foreground),
+            error = painterResource(id = R.mipmap.ic_launcher_foreground),
             contentScale = ContentScale.Crop
         )
 

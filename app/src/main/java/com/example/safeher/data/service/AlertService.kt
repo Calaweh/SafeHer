@@ -92,7 +92,7 @@ class AlertService : LifecycleService() {
         }
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.mipmap.ic_launcher_foreground)
             .setContentTitle("🚨 EMERGENCY ALERT!")
             .setContentText("${alert.senderName} needs help!")
             .setStyle(NotificationCompat.BigTextStyle()
@@ -114,7 +114,7 @@ class AlertService : LifecycleService() {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("SafeHer Protection Active")
             .setContentText("Monitoring for emergency alerts")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.mipmap.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()

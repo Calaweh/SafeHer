@@ -29,10 +29,6 @@ class SafeHerApplication : Application(), ImageLoaderFactory {
                 .build()
 
             FirebaseApp.initializeApp(this, options)
-            Log.d("SafeHerApplication", "Firebase initialized successfully")
-
-            AGConnectServicesConfig.fromContext(this)
-            Log.d("SafeHerApplication", "AGConnect initialized successfully")
 
             Coil.setImageLoader(newImageLoader())
             Log.d("SafeHerApplication", "Global ImageLoader set: ${Coil.imageLoader(this)}")
@@ -45,8 +41,10 @@ class SafeHerApplication : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         try {
             val imageLoader = imageLoaderProvider.get()
+            Log.d("SafeHerApplication", "newImageLoader")
             return imageLoader
         } catch (e: Exception) {
+            Log.e("SafeHerApplication", "Error in newImageLoader: ${e.message}", e)
             return ImageLoader.Builder(this).build()
         }
     }
