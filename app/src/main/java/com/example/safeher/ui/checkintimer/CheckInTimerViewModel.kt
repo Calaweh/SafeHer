@@ -313,6 +313,14 @@ class CheckInTimerViewModel @Inject constructor(
         }
     }
 
+    fun resetUiState() {
+        _uiState.value = CheckInTimerUiState.Idle
+    }
+
+    fun getSavedPin(): String {
+        return prefs.getString(PIN_KEY, "") ?: ""
+    }
+
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()

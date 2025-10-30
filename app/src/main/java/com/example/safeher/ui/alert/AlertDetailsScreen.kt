@@ -2,6 +2,7 @@ package com.example.safeher.ui.alert
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.huawei.hms.maps.CameraUpdateFactory
 import com.huawei.hms.maps.HuaweiMap
 import com.huawei.hms.maps.MapView
@@ -35,11 +37,19 @@ fun AlertDetailScreen(
     longitude: Double,
     locationName: String,
     timestamp: Date?,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: AlertDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var huaweiMap by remember { mutableStateOf<HuaweiMap?>(null) }
+
+    val senderUser by viewModel.senderUser.collectAsState()
+    val isLoadingUser by viewModel.isLoading.collectAsState()
+
+    LaunchedEffect(senderId) {
+        viewModel.loadSenderUser(senderId)
+    }
 
     Scaffold(
         topBar = {
@@ -62,7 +72,6 @@ fun AlertDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Alert Info Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,6 +113,17 @@ fun AlertDetailScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                         )
                     }
+
+                    senderUser?.contactNumber?.let { phone ->
+                        if (phone.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "📞 $phone",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -131,19 +151,37 @@ fun AlertDetailScreen(
 
                 Button(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_DIAL).apply {
-                            data = Uri.parse("tel:")
+                        val phoneNumber = senderUser?.contactNumber ?: ""
+                        if (phoneNumber.isNotEmpty()) {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:$phoneNumber")
+                            }
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Phone number not available for ${senderName}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
-                        context.startActivity(intent)
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary
-                    )
+                    ),
+                    enabled = !isLoadingUser && senderUser?.contactNumber?.isNotEmpty() == true
                 ) {
-                    Icon(Icons.Default.Call, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Call")
+                    if (isLoadingUser) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSecondary
+                        )
+                    } else {
+                        Icon(Icons.Default.Call, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Call")
+                    }
                 }
             }
 
