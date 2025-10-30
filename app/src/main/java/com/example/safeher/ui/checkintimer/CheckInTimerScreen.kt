@@ -1,5 +1,6 @@
 package com.example.safeher.ui.checkintimer
 
+import android.util.Log
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,12 +28,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import java.util.concurrent.TimeUnit
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.delay
 
 @Composable
@@ -43,9 +47,15 @@ fun CheckInTimerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val hasPinSet by viewModel.hasPinSet.collectAsState()
 
+    LaunchedEffect(Unit) {
+        if (uiState is CheckInTimerUiState.Success || uiState is CheckInTimerUiState.Expired) {
+            viewModel.resetUiState()
+        }
+    }
+
     LaunchedEffect(uiState) {
         if (uiState is CheckInTimerUiState.Success) {
-            kotlinx.coroutines.delay(1500)
+            delay(500)
             onDismiss()
         }
     }
@@ -56,7 +66,10 @@ fun CheckInTimerScreen(
                 onPinSet = { pin ->
                     viewModel.savePin(pin)
                 },
-                onDismiss = onDismiss
+                onDismiss = {
+                    viewModel.resetUiState()
+                    onDismiss()
+                }
             )
         }
         else -> {
@@ -65,7 +78,11 @@ fun CheckInTimerScreen(
                 onStartTimer = { minutes ->
                     viewModel.startTimer(minutes)
                 },
-                onDismiss = onDismiss
+                onDismiss = {
+                    viewModel.resetUiState()
+                    onDismiss()
+                },
+                viewModel = viewModel
             )
         }
     }
@@ -75,10 +92,12 @@ fun CheckInTimerScreen(
 fun DurationSelectionDialog(
     uiState: CheckInTimerUiState,
     onStartTimer: (Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    viewModel: CheckInTimerViewModel = hiltViewModel()
 ) {
     var selectedMinutes by remember { mutableIntStateOf(30) }
     val quickDurations = remember { listOf(15, 30, 45, 60) }
+    var showChangePinDialog by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -108,7 +127,10 @@ fun DurationSelectionDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 500.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -148,6 +170,19 @@ fun DurationSelectionDialog(
                     }
                 }
 
+                OutlinedButton(
+                    onClick = { showChangePinDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Change PIN")
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -165,7 +200,7 @@ fun DurationSelectionDialog(
                             Icon(
                                 Icons.Default.Info,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
@@ -177,8 +212,7 @@ fun DurationSelectionDialog(
                         }
                         Text(
                             "• Enter your PIN to mark yourself safe\n" +
-                                    "• If timer expires without check-in, emergency alert sent\n" +
-                                    "• You can navigate other pages during countdown",
+                                    "• If timer expires without check-in, emergency alert sent\n",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             lineHeight = 20.sp
@@ -187,12 +221,31 @@ fun DurationSelectionDialog(
                 }
 
                 if (uiState is CheckInTimerUiState.Error) {
-                    Text(
-                        text = uiState.message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = uiState.message,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -210,6 +263,198 @@ fun DurationSelectionDialog(
                 } else {
                     Text("Start Timer")
                 }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+    if (showChangePinDialog) {
+        ChangePinDialog(
+            onDismiss = { showChangePinDialog = false },
+            onPinChanged = { newPin ->
+                viewModel.savePin(newPin)
+                showChangePinDialog = false
+            },
+            viewModel = viewModel
+        )
+    }
+}
+
+@Composable
+fun ChangePinDialog(
+    onDismiss: () -> Unit,
+    onPinChanged: (String) -> Unit,
+    viewModel: CheckInTimerViewModel
+) {
+    var currentPin by remember { mutableStateOf("") }
+    var newPin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                "Change PIN",
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "Update your safety PIN",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                OutlinedTextField(
+                    value = currentPin,
+                    onValueChange = {
+                        if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                            currentPin = it
+                            showError = false
+                        }
+                    },
+                    label = { Text("Current PIN") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = showError && currentPin.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (currentPin.isNotEmpty()) {
+                            IconButton(onClick = { currentPin = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    }
+                )
+
+                OutlinedTextField(
+                    value = newPin,
+                    onValueChange = {
+                        if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                            newPin = it
+                            showError = false
+                        }
+                    },
+                    label = { Text("New PIN (4-6 digits)") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (newPin.isNotEmpty()) {
+                            IconButton(onClick = { newPin = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    }
+                )
+
+                OutlinedTextField(
+                    value = confirmPin,
+                    onValueChange = {
+                        if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                            confirmPin = it
+                            showError = false
+                        }
+                    },
+                    label = { Text("Confirm New PIN") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = showError,
+                    supportingText = if (showError) {
+                        { Text(errorMessage, color = MaterialTheme.colorScheme.error) }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (confirmPin.isNotEmpty()) {
+                            IconButton(onClick = { confirmPin = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    }
+                )
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            "Make sure to remember your new PIN. You'll need it to check in safely.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val savedPin = viewModel.getSavedPin()
+
+                    when {
+                        currentPin.isEmpty() -> {
+                            showError = true
+                            errorMessage = "Enter current PIN"
+                        }
+                        currentPin != savedPin -> {
+                            showError = true
+                            errorMessage = "Current PIN is incorrect"
+                        }
+                        newPin.length < 4 -> {
+                            showError = true
+                            errorMessage = "New PIN must be at least 4 digits"
+                        }
+                        newPin != confirmPin -> {
+                            showError = true
+                            errorMessage = "New PINs don't match"
+                        }
+                        newPin == currentPin -> {
+                            showError = true
+                            errorMessage = "New PIN must be different from current PIN"
+                        }
+                        else -> {
+                            onPinChanged(newPin)
+                        }
+                    }
+                },
+                enabled = currentPin.length >= 4 && newPin.length >= 4 && confirmPin.length >= 4
+            ) {
+                Text("Update PIN")
             }
         },
         dismissButton = {
@@ -677,24 +922,41 @@ fun SetupPinDialog(
 fun CheckInTimerOverlay(
     viewModel: CheckInTimerViewModel = hiltViewModel()
 ) {
+    var isExpanded by rememberSaveable { mutableStateOf(true) }
     var remainingMillis by remember { mutableLongStateOf(0L) }
-    var isExpanded by remember { mutableStateOf(true) }
     var pin by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
+    var hasExpired by remember { mutableStateOf(false) }
 
     val isTimerActive by viewModel.timerStateManager.isTimerActive.collectAsState()
 
+    // Update countdown every second
     LaunchedEffect(isTimerActive) {
         while (isTimerActive) {
             remainingMillis = viewModel.timerStateManager.getRemainingMillis()
+
+            // Check if timer expired
             if (remainingMillis <= 0) {
+                Log.d("CheckInTimerOverlay", "⏰ Timer expired!")
+                hasExpired = true
+                delay(2000) // Show "expired" message briefly
                 break
             }
+
             delay(1000)
         }
     }
 
-    if (!isTimerActive) return
+    // Hide overlay if timer not active or expired
+    if (!isTimerActive || (hasExpired && remainingMillis <= 0)) {
+        // Reset state when hiding
+        LaunchedEffect(Unit) {
+            pin = ""
+            showError = false
+            hasExpired = false
+        }
+        return
+    }
 
     val totalMillis = viewModel.timerStateManager.endTimeMillis.collectAsState().value
     val startMillis = totalMillis - remainingMillis
@@ -735,7 +997,7 @@ fun CheckInTimerOverlay(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(if (isExpanded) 0.95f else 0.4f)
+                .fillMaxWidth(if (isExpanded) 0.95f else 0.5f)
                 .padding(16.dp)
                 .then(
                     if (!isExpanded) {
@@ -743,7 +1005,8 @@ fun CheckInTimerOverlay(
                     } else {
                         Modifier
                     }
-                ),
+                )
+                .clickable(enabled = !isExpanded) { isExpanded = true },
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (isUrgent)
@@ -764,15 +1027,29 @@ fun CheckInTimerOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "⏰ Check-In Timer",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isUrgent)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = if (isUrgent)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Check-In Timer",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isUrgent)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = { isExpanded = !isExpanded }) {
                         Icon(
                             imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -784,142 +1061,174 @@ fun CheckInTimerOverlay(
                 if (isExpanded) {
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Timer Display
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            progress = { animatedProgress },
-                            modifier = Modifier.size(180.dp),
-                            strokeWidth = 10.dp,
-                            color = when {
-                                isUrgent -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.primary
-                            },
-                        )
+                    // Show "EXPIRED" state if time is up
+                    if (remainingMillis <= 0) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.alpha(if (isUrgent) pulseAlpha else 1f)
+                            modifier = Modifier.padding(vertical = 32.dp)
                         ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = timeText,
-                                fontSize = 48.sp,
+                                text = "Timer Expired!",
+                                fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Emergency alert has been sent",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // Normal countdown display
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier.size(180.dp),
+                                strokeWidth = 10.dp,
                                 color = when {
                                     isUrgent -> MaterialTheme.colorScheme.error
                                     else -> MaterialTheme.colorScheme.primary
-                                }
+                                },
                             )
-                            Text(
-                                text = "remaining",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    if (isUrgent) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.alpha(if (isUrgent) pulseAlpha else 1f)
                             ) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(24.dp)
+                                Text(
+                                    text = timeText,
+                                    fontSize = 48.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        isUrgent -> MaterialTheme.colorScheme.error
+                                        else -> MaterialTheme.colorScheme.primary
+                                    }
                                 )
                                 Text(
-                                    "Less than 5 minutes!\nCheck in now.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    fontWeight = FontWeight.SemiBold
+                                    text = "remaining",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        "Are you safe?",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        "Enter your PIN to check in",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = pin,
-                        onValueChange = {
-                            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
-                                pin = it
-                                showError = false
-                            }
-                        },
-                        label = { Text("Enter PIN") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        isError = showError,
-                        supportingText = if (showError) {
-                            { Text("Incorrect PIN", color = MaterialTheme.colorScheme.error) }
-                        } else null,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        trailingIcon = {
-                            if (pin.isNotEmpty()) {
-                                IconButton(onClick = { pin = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        // Urgency Warning
+                        if (isUrgent) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        "Less than 5 minutes!\nCheck in now.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
-                    )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = {
-                            if (pin.length >= 4) {
-                                val result = viewModel.validatePinAndStop(pin)
-                                if (!result) {
-                                    showError = true
-                                } else {
-                                    pin = ""
+                        Text(
+                            "Are you safe?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            "Enter your PIN to check in",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = pin,
+                            onValueChange = {
+                                if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                                    pin = it
+                                    showError = false
                                 }
-                            } else {
-                                showError = true
+                            },
+                            label = { Text("Enter PIN") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            isError = showError,
+                            supportingText = if (showError) {
+                                { Text("Incorrect PIN", color = MaterialTheme.colorScheme.error) }
+                            } else null,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            trailingIcon = {
+                                if (pin.isNotEmpty()) {
+                                    IconButton(onClick = { pin = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    }
+                                }
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        enabled = pin.length >= 4
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("I'm Safe - Check In")
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                if (pin.length >= 4) {
+                                    val result = viewModel.validatePinAndStop(pin)
+                                    if (!result) {
+                                        showError = true
+                                    } else {
+                                        pin = ""
+                                    }
+                                } else {
+                                    showError = true
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            enabled = pin.length >= 4
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("I'm Safe - Check In")
+                        }
                     }
                 } else {
+                    // Minimized view
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

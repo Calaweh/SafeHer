@@ -100,6 +100,7 @@ class CheckInTimerService : Service() {
                 val remaining = endTime - System.currentTimeMillis()
 
                 if (remaining <= 0) {
+                    Log.d(TAG, "⏰ Timer EXPIRED - sending emergency alert")
                     sendEmergencyAlert()
                     stopTimer(success = false)
                     break
@@ -120,8 +121,12 @@ class CheckInTimerService : Service() {
         timerJob?.cancel()
         timerJob = null
 
+        timerStateManager.stopTimer()
+
         if (success) {
             showSuccessNotification()
+        } else {
+            showAlertSentNotification()
         }
 
         serviceScope.launch {
