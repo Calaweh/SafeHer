@@ -9,11 +9,13 @@ import com.example.safeher.data.datasource.UserDataSource
 import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.repository.FriendRepository
+import com.example.safeher.data.repository.LocationSharingRepository
 import com.example.safeher.utils.ILocationProvider
 import com.google.firebase.firestore.GeoPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,8 +40,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val friendRepository: FriendRepository,
-    private val locationDataSource: LocationRemoteDataSource,
+    private val locationSharingRepository: LocationSharingRepository,
     private val userDataSource: UserDataSource,
     private val locationProvider: ILocationProvider
 ) : ViewModel() {
@@ -69,28 +70,6 @@ class MapViewModel @Inject constructor(
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-//    private val userLocationFlow: Flow<LiveLocation?> = userDataSource.userState
-//        .flatMapLatest { user ->
-//            if (user == null) {
-//                flowOf(null)
-//            } else {
-//                locationProvider.getLocationUpdates()
-//                    .map<Location, LiveLocation?> { location ->
-//                        LiveLocation(
-//                            userId = user.id,
-//                            displayName = "My Location",
-//                            imageUrl = user.imageUrl,
-//                            location = GeoPoint(location.latitude, location.longitude),
-//                            isSharing = true
-//                        )
-//                    }
-//                    .catch { e ->
-//                        Log.e("MapViewModel", "Error getting user's own location", e)
-//                        emit(null)
-//                    }
-//            }
-//        }
 
     private val userLocationFlow: Flow<LiveLocation?> = userDataSource.userState
         .flatMapLatest { user ->
@@ -132,6 +111,21 @@ class MapViewModel @Inject constructor(
     init {
         Log.d("MapViewModel", "MapViewModel INIT - Starting location observation")
         observeAllLocations()
+
+        viewModelScope.launch {
+            locationSharingRepository.sharingStartedTrigger
+                .collect { timestamp ->
+                    Log.d("MapViewModel", "Sharing started trigger received: $timestamp")
+                    restartLocationObservation()
+                }
+        }
+    }
+
+    private fun restartLocationObservation() {
+        Log.d("MapViewModel", "Restarting location observation due to sharing start")
+        _locationsUiState.value = UiState.Loading
+        currentLocations.clear()
+        observeAllLocations()
     }
 
     fun updateTrackedFriends(friendIds: Set<String>) {
@@ -139,35 +133,37 @@ class MapViewModel @Inject constructor(
     }
 
     private fun observeAllLocations() {
-        Log.d("MapViewModel", "observeAllLocations() CALLED")
         viewModelScope.launch {
-            Log.d("MapViewModel", "Inside coroutine - Setting Loading")
             _locationsUiState.value = UiState.Loading
+            currentLocations.clear()
 
-            Log.d("MapViewModel", "Trying getLastKnownLocation() with 5s timeout...")
-            val lastLocation = withTimeoutOrNull(5000) {
-                locationProvider.getLastKnownLocation()
+            var lastLocation: Location? = null
+            var attempts = 0
+            while (lastLocation == null && attempts < 3) {
+                lastLocation = withTimeoutOrNull(3000) {
+                    locationProvider.getLastKnownLocation()
+                }
+                attempts++
+                if (lastLocation == null) {
+                    delay(1000)
+                }
             }
-            Log.d("MapViewModel", "getLastKnownLocation() result: $lastLocation")
 
             if (lastLocation != null) {
                 updateMyLocation(lastLocation)
                 _locationsUiState.value = UiState.Success(currentLocations.toList())
-                Log.d("MapViewModel", "Last location used - Emitting Success")
-                return@launch
+                Log.d("MapViewModel", "Used last known location on retry")
+            } else {
+                _locationsUiState.value = UiState.Empty
+                Log.d("MapViewModel", "No last location after retries - waiting for updates")
             }
 
-            Log.d("MapViewModel", "No last location - Setting Empty")
-            _locationsUiState.value = UiState.Empty
-
-            Log.d("MapViewModel", "Starting location updates Flow...")
             locationProvider.getLocationUpdates()
                 .catch { e ->
                     Log.e("MapViewModel", "Location Flow error: $e", e)
-                    _locationsUiState.value = UiState.Error(e.message ?: "Failed")
+                    _locationsUiState.value = UiState.Error(e.message ?: "Location failed")
                 }
                 .onEach { location ->
-                    Log.d("MapViewModel", "ON LOCATION: $location")
                     updateMyLocation(location)
                     _locationsUiState.value = UiState.Success(currentLocations.toList())
                 }

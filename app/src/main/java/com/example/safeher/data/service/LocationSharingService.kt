@@ -146,6 +146,8 @@ class LocationSharingService : LifecycleService() {
             return
         }
 
+        repository.triggerSharingStarted()
+
         locationJob = lifecycleScope.launch(Dispatchers.IO) {
             val user = withTimeoutOrNull(5_000) {
                 userDataSource.userState.first { it != null }
