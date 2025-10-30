@@ -252,9 +252,9 @@ class LocationSharingService : LifecycleService() {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.mipmap.ic_launcher_foreground)
             .setContentIntent(openAppPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "Cancel & Stop", stopPendingIntent)
+            .addAction(R.mipmap.ic_launcher_foreground, "Cancel & Stop", stopPendingIntent)
             .setOngoing(true)
             .build()
     }

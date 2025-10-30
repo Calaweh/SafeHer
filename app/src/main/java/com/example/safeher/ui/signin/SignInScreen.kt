@@ -105,7 +105,7 @@ fun SignInScreenContent(
             Spacer(Modifier.height(48.dp))
             Image(
                 modifier = Modifier.size(88.dp),
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
                 contentDescription = "App logo"
             )
             Spacer(Modifier.height(48.dp))

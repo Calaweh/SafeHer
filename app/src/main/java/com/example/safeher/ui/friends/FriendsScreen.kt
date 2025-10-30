@@ -577,7 +577,7 @@ fun FriendRequestItem(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                             shape = CircleShape
                         ),
-                    placeholder = painterResource(R.drawable.ic_launcher_foreground),
+                    placeholder = painterResource(R.mipmap.ic_launcher_foreground),
                     contentScale = ContentScale.Crop
                 )
             }
