@@ -79,6 +79,7 @@ import com.example.safeher.ui.splash.SplashViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Date
+import com.example.safeher.ui.alert.AlertHistoryScreen
 
 enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),
@@ -92,7 +93,8 @@ enum class Screen(@StringRes val title: Int) {
     Friends(R.string.friends_screen_title),
     FirebaseSearch(R.string.firebase_search_screen_title),
     CheckIn(R.string.check_in_screen_title),
-    AlertDetail(R.string.alert_detail_screen_title)
+    AlertDetail(R.string.alert_detail_screen_title),
+    AlertHistory(R.string.alert_history_screen_title)
 }
 
 data class MainNavItem(
@@ -255,7 +257,8 @@ private fun AppScaffold(
 
     val showMainNavigationUi = currentScreen in mainNavigationScreens && !showSplash
     val canPop = navController.previousBackStackEntry != null
-    val showBackButton = canPop && !showMainNavigationUi && !showSplash
+    val screensWithOwnTopBar = listOf(Screen.AlertHistory, Screen.AlertDetail)
+    val showBackButton = canPop && !showMainNavigationUi && !showSplash && currentScreen !in screensWithOwnTopBar
 
 //    val screensWithoutPlayerBar = listOf(Screen.Splash, Screen.SignIn, Screen.SignUp, Screen.ForgotPassword) // The states that don't show Navigation bar (tabs)
 //    val isPlayerBarVisible = currentScreen !in screensWithoutPlayerBar && !showSplash
@@ -445,6 +448,15 @@ private fun AppScaffold(
                     onBackClick = { navController.navigateUp() }
                 )
             }
+            composable(Screen.AlertHistory.name) {
+                AlertHistoryScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onAlertClick = { alert ->
+                        val route = "alertDetail/${alert.id}/${alert.senderId}/${Uri.encode(alert.senderName)}/${alert.latitude}/${alert.longitude}/${Uri.encode(alert.locationName)}"
+                        navController.navigate(route)
+                    }
+                )
+            }
         }
 
         LaunchedEffect(notificationIntent) {
@@ -457,7 +469,6 @@ private fun AppScaffold(
                 val locationName = extras.getString("locationName", "")
 
                 if (alertId != null && senderId != null && senderName != null) {
-                    // Small delay to ensure NavHost is fully initialized
                     kotlinx.coroutines.delay(100)
                     val route = "alertDetail/$alertId/$senderId/${Uri.encode(senderName)}/$latitude/$longitude/${Uri.encode(locationName)}"
                     navController.navigate(route)

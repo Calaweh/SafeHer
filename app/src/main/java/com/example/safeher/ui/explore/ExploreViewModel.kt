@@ -28,6 +28,10 @@ import kotlinx.coroutines.tasks.await
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import com.example.safeher.data.model.AlertHistory
+import com.example.safeher.data.model.AlertType
+import com.example.safeher.data.model.AlertStatus
+import com.example.safeher.data.repository.AlertHistoryRepository
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
@@ -35,6 +39,7 @@ class ExploreViewModel @Inject constructor(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
     private val firestore: FirebaseFirestore,
+    private val alertHistoryRepository: AlertHistoryRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -104,6 +109,24 @@ class ExploreViewModel @Inject constructor(
                         .add(alert)
                         .await()
 
+                    val alertHistory = AlertHistory(
+                        senderId = currentUserProfile.id,
+                        senderName = currentUserProfile.displayName,
+                        receiverId = friend.id,
+                        receiverName = friend.displayName,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        locationName = locationName,
+                        type = AlertType.SENT,
+                        status = AlertStatus.DELIVERED
+                    )
+
+                    Log.d(TAG, "💾 SAVING SENT ALERT:")
+                    Log.d(TAG, "  Sender: ${alertHistory.senderId} (${alertHistory.senderName})")
+                    Log.d(TAG, "  Receiver: ${alertHistory.receiverId} (${alertHistory.receiverName})")
+                    Log.d(TAG, "  Type: ${alertHistory.type}")
+
+                    alertHistoryRepository.saveAlertHistory(alertHistory)
                     Log.d(TAG, "Successfully created alert with location for friend: ${friend.displayName}")
                 }
 
