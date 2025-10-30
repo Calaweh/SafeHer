@@ -56,7 +56,7 @@ class AlertService : LifecycleService() {
 
                     alertRepository.getNewAlerts(userId).collect { alerts ->
                         alerts.forEach { alert ->
-                            Log.d(TAG, "New alert received from: ${alert.senderName} (ID: ${alert.id})")
+                            Log.d(TAG, "New alert received from: ${alert.senderName} at ${alert.locationName}")
                             showAlertNotification(alert)
 
                             alertRepository.deleteAlert(userId, alert.id)
@@ -76,13 +76,27 @@ class AlertService : LifecycleService() {
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("alertId", alert.id)
+            putExtra("senderId", alert.senderId)
+            putExtra("senderName", alert.senderName)
+            putExtra("latitude", alert.latitude)
+            putExtra("longitude", alert.longitude)
+            putExtra("locationName", alert.locationName)
         }
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getActivity(this, alert.id.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val locationText = if (alert.locationName.isNotEmpty()) {
+            alert.locationName
+        } else {
+            "Location: ${alert.latitude}, ${alert.longitude}"
+        }
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher_foreground)
             .setContentTitle("🚨 EMERGENCY ALERT!")
-            .setContentText("${alert.senderName} needs help immediately!")
+            .setContentText("${alert.senderName} needs help!")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("${alert.senderName} needs help immediately!\n\n📍 Location: $locationText\n\nTap to view on map"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setContentIntent(pendingIntent)

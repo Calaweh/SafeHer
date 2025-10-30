@@ -144,7 +144,8 @@ class MainActivity : ComponentActivity() {
 
                     App(
                         windowSize = windowSize.widthSizeClass,
-                        finishActivity = { finish() }
+                        finishActivity = { finish() },
+                        notificationIntent = intent
                     )
 
                     if (showBackgroundLocationDialog) {
@@ -163,7 +164,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ HELPER FUNCTION TO START ALERT SERVICE
     private fun startAlertService() {
         val intent = Intent(this, AlertService::class.java)
         startService(intent)
