@@ -32,7 +32,7 @@ class AuthRemoteDataSource @Inject constructor(
         auth.signInWithEmailAndPassword(email, password).await()
     }
 
-    suspend fun createUser(email: String, password: String) {
+    suspend fun createUser(email: String, password: String, name: String, contactNumber: String) {
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val firebaseUser = result.user
 
@@ -40,12 +40,13 @@ class AuthRemoteDataSource @Inject constructor(
             val newUser = User(
                 id = firebaseUser.uid,
                 email = firebaseUser.email ?: "",
-                displayName = firebaseUser.email?.substringBefore('@') ?: "New User",
+                displayName = name,
+                contactNumber = contactNumber,
                 imageUrl = "",
                 anonymous = false
             )
             firestore.collection(USER_COLLECTION).document(newUser.id).set(newUser).await()
-            Log.d("AuthRemoteDataSource", "User ${newUser.id} create successfully")
+            Log.d("AuthRemoteDataSource", "User ${newUser.id} created successfully")
         } else {
             throw IllegalStateException("Firebase user was null after creation.")
         }

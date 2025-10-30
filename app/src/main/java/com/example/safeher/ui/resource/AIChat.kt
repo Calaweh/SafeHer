@@ -59,6 +59,8 @@ fun AIChat(
     val meUiState by meViewModel.uiState.collectAsState()
     val userImage = meUiState.user?.imageUrl
 
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -132,13 +134,38 @@ fun AIChat(
                         }
                     }
 
-                    IconButton(onClick = {
-                        Toast.makeText(context, "AI-powered emotional support & safety companion", Toast.LENGTH_SHORT).show()
-                    }) {
+                    IconButton(onClick = { showConfirmDialog = true }) {
                         Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Info",
+                            imageVector = Icons.Default.Delete, // Dustbin icon
+                            contentDescription = "Clear Chat",
                             tint = Color(0xFF718096)
+                        )
+                    }
+
+                    // Confirmation dialog
+                    if (showConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showConfirmDialog = false },
+                            title = { Text("Clear Chat?") },
+                            text = { Text("Are you sure you want to delete the entire chat history? This action cannot be undone.") },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.clearChat()
+                                        showConfirmDialog = false
+                                        Toast.makeText(context, "Chat cleared", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Text("Yes", color = Color(0xFFE53E3E))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showConfirmDialog = false }
+                                ) {
+                                    Text("No")
+                                }
+                            }
                         )
                     }
                 }

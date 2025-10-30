@@ -205,4 +205,38 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
             _messages.value += ChatMessage("⚠️ Couldn't load previous chat. Starting fresh!", false)
         }
     }
+
+    fun clearChat() {
+        viewModelScope.launch {
+            // Clear local state
+            _messages.value = emptyList()
+            chatHistory.clear()
+
+            // Reset initial greeting
+            val initialMsg = ChatMessage(
+                "Hi there! 👋 I'm SafeHer AI, always here for you. How are you feeling today?",
+                false
+            )
+            _messages.value = listOf(initialMsg)
+            chatHistory.add(Content(role = "system", parts = listOf(TextPart(systemPrompt))))
+
+            // Delete chat history from Firebase
+            try {
+                val messagesSnapshot = chatCollection.document(userId)
+                    .collection("messages")
+                    .get()
+                    .await()
+                for (doc in messagesSnapshot.documents) {
+                    chatCollection.document(userId)
+                        .collection("messages")
+                        .document(doc.id)
+                        .delete()
+                        .await()
+                }
+            } catch (e: Exception) {
+                _messages.value += ChatMessage("⚠️ Couldn't clear chat from server.", false)
+            }
+        }
+    }
+
 }

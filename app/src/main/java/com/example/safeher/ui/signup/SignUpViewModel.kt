@@ -16,18 +16,30 @@ import javax.inject.Inject
 class SignUpViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : MainViewModel() {
+
     private val _shouldRestartApp = MutableStateFlow(false)
-    val shouldRestartApp: StateFlow<Boolean>
-        get() = _shouldRestartApp.asStateFlow()
+    val shouldRestartApp: StateFlow<Boolean> = _shouldRestartApp.asStateFlow()
 
     fun signUp(
         email: String,
+        name: String,
+        contactNumber: String,
         password: String,
         repeatPassword: String,
         showErrorSnackbar: (ErrorMessage) -> Unit
     ) {
         if (!email.isValidEmail()) {
             showErrorSnackbar(ErrorMessage.IdError(R.string.invalid_email))
+            return
+        }
+
+        if (name.isBlank()) {
+            showErrorSnackbar(ErrorMessage.IdError(R.string.invalid_full_name))
+            return
+        }
+
+        if (!contactNumber.isValidContactNumber()) {
+            showErrorSnackbar(ErrorMessage.IdError(R.string.invalid_phone))
             return
         }
 
@@ -42,15 +54,22 @@ class SignUpViewModel @Inject constructor(
         }
 
         launchCatching(showErrorSnackbar) {
-            authRepository.signUp(email, password)
+            authRepository.signUp(
+                email = email,
+                password = password,
+                name = name,
+                contactNumber = contactNumber
+            )
             _shouldRestartApp.value = true
         }
+
     }
 }
 
-// Password Validator
+// --- Validators ---
 private const val MIN_PASSWORD_LENGTH = 8
 private const val PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).{4,}$"
+private val CONTACT_PATTERN = "^[0-9]{7,15}$"
 
 fun String.isValidEmail(): Boolean {
     return this.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
@@ -60,4 +79,8 @@ fun String.isValidPassword(): Boolean {
     return this.isNotBlank() &&
             this.length >= MIN_PASSWORD_LENGTH &&
             Pattern.compile(PASSWORD_PATTERN).matcher(this).matches()
+}
+
+fun String.isValidContactNumber(): Boolean {
+    return Pattern.compile(CONTACT_PATTERN).matcher(this).matches()
 }

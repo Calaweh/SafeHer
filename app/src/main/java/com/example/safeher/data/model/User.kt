@@ -9,8 +9,9 @@ data class User(
     @PropertyName("email") val email: String = "",
     @PropertyName("imageUrl") val imageUrl: String = "",
     @PropertyName("displayName") val displayName: String = "",
+    @PropertyName("contactNumber") val contactNumber: String = "",
     @PropertyName("anonymous") val anonymous: Boolean = true,
     @PropertyName("deletedAt") val deletedAt: Date? = null
 ) {
-    constructor() : this("", "", "", "", true, null)
+    constructor() : this("", "", "", "", "", true, null)
 }
