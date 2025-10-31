@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -200,12 +201,25 @@ class LocationSharingService : LifecycleService() {
     }
 
     private fun stopServiceAndSharing() {
+        Log.d("LocationSharingService", "stopServiceAndSharing called")
         stopCurrentTask()
-        lifecycleScope.launch {
-            userDataSource.userState.value?.id?.let {
-                locationDataSource.stopSharingLocation(it)
+
+        val userId = userDataSource.userState.value?.id
+        Log.d("LocationSharingService", "Current userId: $userId")
+
+        if (userId != null) {
+            runBlocking {
+                try {
+                    locationDataSource.stopSharingLocation(userId)
+                    Log.d("LocationSharingService", "stopSharingLocation completed")
+                } catch (e: Exception) {
+                    Log.e("LocationSharingService", "Error in stopSharingLocation", e)
+                }
             }
+        } else {
+            Log.w("LocationSharingService", "userId is null, cannot stop sharing")
         }
+
         stopForeground(true)
         stopSelf()
     }

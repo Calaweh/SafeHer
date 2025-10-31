@@ -417,9 +417,9 @@ fun TimerSelectionDialog(
                 Text(description)
 
                 val timeOptions = if (mode == ShareMode.INSTANT) {
-                    listOf(1L to "1 minutes", 30L to "30 minutes", 60L to "1 hour", 120L to "2 hours")
+                    listOf(10L to "10 minutes", 30L to "30 minutes", 60L to "1 hour", 120L to "2 hours")
                 } else {
-                    listOf(1L to "1 minutes", 15L to "15 minutes", 30L to "30 minutes", 60L to "1 hour")
+                    listOf(10L to "10 minutes", 15L to "15 minutes", 30L to "30 minutes", 60L to "1 hour")
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

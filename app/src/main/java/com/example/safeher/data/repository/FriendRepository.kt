@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.safeher.data.datasource.FriendRemoteDataSource
 import com.example.safeher.data.model.Friend
 import com.example.safeher.data.model.Friends
+import com.example.safeher.data.model.LiveLocation
 import com.example.safeher.data.model.User
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

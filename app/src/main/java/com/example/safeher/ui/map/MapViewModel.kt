@@ -40,7 +40,9 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MapViewModel @Inject constructor(
+    private val friendRepository: FriendRepository,
     private val locationSharingRepository: LocationSharingRepository,
+    private val locationRemoteDataSource: LocationRemoteDataSource,
     private val userDataSource: UserDataSource,
     private val locationProvider: ILocationProvider
 ) : ViewModel() {
@@ -111,6 +113,7 @@ class MapViewModel @Inject constructor(
     init {
         Log.d("MapViewModel", "MapViewModel INIT - Starting location observation")
         observeAllLocations()
+        loadFriends()
 
         viewModelScope.launch {
             locationSharingRepository.sharingStartedTrigger
@@ -118,6 +121,23 @@ class MapViewModel @Inject constructor(
                     Log.d("MapViewModel", "Sharing started trigger received: $timestamp")
                     restartLocationObservation()
                 }
+        }
+    }
+
+    private fun loadFriends() {
+        viewModelScope.launch {
+            try {
+                val userId = userDataSource.userState.first { it != null }?.id
+                if (userId != null) {
+                    friendRepository.getFriendsByUser(userId).collect { friendsList ->
+                        _allFriends.value = friendsList.friends
+                        Log.d("MapViewModel", "Loaded ${friendsList.friends.size} friends")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "Error loading friends", e)
+                _allFriends.value = emptyList()
+            }
         }
     }
 
@@ -130,45 +150,6 @@ class MapViewModel @Inject constructor(
 
     fun updateTrackedFriends(friendIds: Set<String>) {
         _trackedFriendIds.value = friendIds
-    }
-
-    private fun observeAllLocations() {
-        viewModelScope.launch {
-            _locationsUiState.value = UiState.Loading
-            currentLocations.clear()
-
-            var lastLocation: Location? = null
-            var attempts = 0
-            while (lastLocation == null && attempts < 3) {
-                lastLocation = withTimeoutOrNull(3000) {
-                    locationProvider.getLastKnownLocation()
-                }
-                attempts++
-                if (lastLocation == null) {
-                    delay(1000)
-                }
-            }
-
-            if (lastLocation != null) {
-                updateMyLocation(lastLocation)
-                _locationsUiState.value = UiState.Success(currentLocations.toList())
-                Log.d("MapViewModel", "Used last known location on retry")
-            } else {
-                _locationsUiState.value = UiState.Empty
-                Log.d("MapViewModel", "No last location after retries - waiting for updates")
-            }
-
-            locationProvider.getLocationUpdates()
-                .catch { e ->
-                    Log.e("MapViewModel", "Location Flow error: $e", e)
-                    _locationsUiState.value = UiState.Error(e.message ?: "Location failed")
-                }
-                .onEach { location ->
-                    updateMyLocation(location)
-                    _locationsUiState.value = UiState.Success(currentLocations.toList())
-                }
-                .launchIn(this)
-        }
     }
 
     fun updateSelectedUser(userId: String?) {
@@ -194,6 +175,70 @@ class MapViewModel @Inject constructor(
         )
         currentLocations.removeAll { it.userId == liveLocation.userId }
         currentLocations.add(liveLocation)
+    }
+
+    private fun observeAllLocations() {
+        viewModelScope.launch {
+            _locationsUiState.value = UiState.Loading
+            currentLocations.clear()
+
+            // 1. Get your own location
+            var lastLocation: Location? = null
+            var attempts = 0
+            while (lastLocation == null && attempts < 3) {
+                lastLocation = withTimeoutOrNull(3000) {
+                    locationProvider.getLastKnownLocation()
+                }
+                attempts++
+                if (lastLocation == null) {
+                    delay(1000)
+                }
+            }
+
+            if (lastLocation != null) {
+                updateMyLocation(lastLocation)
+            }
+
+            // 2. Observe your own location updates
+            locationProvider.getLocationUpdates()
+                .catch { e ->
+                    Log.e("MapViewModel", "Location Flow error: $e", e)
+                }
+                .onEach { location ->
+                    updateMyLocation(location)
+                    _locationsUiState.value = UiState.Success(currentLocations.toList())
+                }
+                .launchIn(this)
+
+            observeFriendsLocations()
+        }
+    }
+
+    private fun observeFriendsLocations() {
+        viewModelScope.launch {
+            try {
+                val userId = userDataSource.userState.first { it != null }?.id
+                if (userId != null) {
+                    locationRemoteDataSource.observeSharedLocations(userId)
+                        .collect { sharedLocations ->
+                            val myUserId = userDataSource.userState.value?.id
+                            currentLocations.removeAll { it.userId != myUserId }
+
+                            currentLocations.addAll(sharedLocations)
+
+                            _locationsUiState.value = if (currentLocations.isEmpty()) {
+                                UiState.Empty
+                            } else {
+                                UiState.Success(currentLocations.toList())
+                            }
+
+                            Log.d("MapViewModel", "Updated locations: ${currentLocations.size} total")
+                        }
+                }
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "Error observing friends' locations", e)
+            }
+        }
     }
 
 }

@@ -7,9 +7,14 @@
     import com.google.firebase.firestore.GeoPoint
     import com.google.firebase.firestore.snapshots
     import kotlinx.coroutines.flow.Flow
+    import kotlinx.coroutines.flow.catch
+    import kotlinx.coroutines.flow.combine
+    import kotlinx.coroutines.flow.flatMapLatest
+    import kotlinx.coroutines.flow.flowOf
     import kotlinx.coroutines.flow.map
     import kotlinx.coroutines.tasks.await
     import javax.inject.Inject
+    import kotlin.collections.map
 
     class LocationRemoteDataSource @Inject constructor(
         private val firestore: FirebaseFirestore
@@ -58,5 +63,52 @@
                 .whereEqualTo("isSharing", true)
                 .snapshots()
                 .map { snapshot -> snapshot.toObjects(LiveLocation::class.java) }
+        }
+
+        fun observeSharedLocations(userId: String): Flow<List<LiveLocation>> {
+            return firestore.collection("users")
+                .document(userId)
+                .collection("friends")
+                .whereEqualTo("status", "accepted")
+                .whereEqualTo("deletedAt", null)
+                .snapshots()
+                .flatMapLatest { friendsSnapshot ->
+                    val friendIds = friendsSnapshot.documents.mapNotNull { it.getString("id") }
+
+                    Log.d("LocationRemoteDataSource", "Found ${friendIds.size} accepted friends")
+
+                    if (friendIds.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        firestore.collection(LOCATION_COLLECTION)
+                            .whereIn(
+                                "userId",
+                                friendIds.take(10)
+                            )
+                            .whereEqualTo("isSharing", true)
+                            .whereArrayContains("sharedWith", userId)
+                            .snapshots()
+                            .map { snapshot ->
+                                val locations = snapshot.toObjects(LiveLocation::class.java)
+                                Log.d(
+                                    "LocationRemoteDataSource",
+                                    "Received ${locations.size} shared locations"
+                                )
+                                locations
+                            }
+                            .catch { e ->
+                                Log.e(
+                                    "LocationRemoteDataSource",
+                                    "Error querying shared locations",
+                                    e
+                                )
+                                emit(emptyList())
+                            }
+                    }
+                }
+                .catch { e ->
+                    Log.e("LocationRemoteDataSource", "Error observing shared locations", e)
+                    emit(emptyList())
+                }
         }
     }
