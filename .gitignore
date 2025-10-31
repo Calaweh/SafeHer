@@ -28,6 +28,8 @@ captures/
 *.iml
 .DS_Store
 *.jks
+*.pem
+
 *.keystore
 com_crashlytics_export_strings.xml
 crashlytics.properties
