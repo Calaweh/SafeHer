@@ -53,6 +53,7 @@ hianalytics = "6.12.0.301"
 rxjava3 = "3.1.12"
 rxandroid3 = "3.0.2"
 runtimeSaveable = "1.9.4"
+uiText = "1.9.4"
 
 [libraries]
 agconnect-crash = { module = "com.huawei.agconnect:agconnect-crash", version.ref = "agconnectCrash" }
@@ -138,6 +139,7 @@ push = { module = "com.huawei.hms:push", version.ref = "push" }
 rxjava3 = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava3" }
 rxandroid3 = { group = "io.reactivex.rxjava3", name = "rxandroid", version.ref = "rxandroid3" }
 androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
+androidx-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

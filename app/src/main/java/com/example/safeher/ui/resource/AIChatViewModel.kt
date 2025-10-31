@@ -51,6 +51,7 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
         5. Never be robotic or formal.
         6. Don't mention hotline numbers or resources explicitly — the app shows buttons.
         7. Detect the user’s emotion (positive, neutral, negative) from tone and content.
+        8. Cannot directly tell user whether their emotion is Positive, Negative or Neutral.
     """.trimIndent()
 
     init {
@@ -129,18 +130,18 @@ class AIChatViewModel @Inject constructor() : ViewModel() {
 
                     when {
                         emotion == EmotionType.NEGATIVE -> append(
-                            "User seems upset. Offer emotional support and gently ask: 'Do you need support from SafeHer’s Resource Hub or alert your family and friends anytime you are in danger or emergency?'"
+                            "Respond warmly, provide emotional support, and suggest helpful actions if appropriate."
                         )
                         emotion == EmotionType.POSITIVE -> append(
-                            "User seems positive. Reply softly, kindly, and encouragingly."
+                            "Reply in a friendly, encouraging, and uplifting tone."
                         )
                         intent == IntentType.HELP_OR_REASONING -> append(
-                            "User is asking for help or advice. Be empathetic and provide realistic steps."
+                            "Provide clear, empathetic advice in a supportive manner."
                         )
                         intent == IntentType.QUESTION -> append(
-                            "User is asking a factual question. Answer accurately but warmly."
+                            "Answer the user’s question accurately and warmly."
                         )
-                        else -> append("User tone is neutral. Respond naturally and kindly.")
+                        else -> append("Respond naturally, kindly, and conversationally.")
                     }
                 }
 

@@ -17,8 +17,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -46,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -94,6 +98,7 @@ fun SignInScreenContent(
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     val passwordFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -135,6 +140,8 @@ fun SignInScreenContent(
                 keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() })
             )
             Spacer(Modifier.size(16.dp))
+            var passwordVisible by remember { mutableStateOf(false) }
+
             OutlinedTextField(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,7 +151,15 @@ fun SignInScreenContent(
                 onValueChange = { password = it },
                 label = { Text(stringResource(R.string.password)) },
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = "Password Icon") },
-                visualTransformation = PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description)
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
@@ -152,6 +167,7 @@ fun SignInScreenContent(
                     signIn(email, password, showErrorSnackbar)
                 })
             )
+
             Spacer(Modifier.size(24.dp))
             StandardButton(
                 label = R.string.sign_in_with_email,

@@ -322,7 +322,7 @@ fun EnhancedChatBubble(
                 Button(
                     onClick = {
                         // TODO: Trigger instant alert
-                        navController?.navigate("instant_alert")
+                        navController?.navigate(Screen.Explore.name)
                     },
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(

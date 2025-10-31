@@ -133,6 +133,7 @@ dependencies {
     implementation(libs.androidx.startup.runtime)
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.androidx.runtime.saveable)
+    implementation(libs.androidx.ui.text)
     ksp(libs.androidx.room.compiler)
 
     // Firebase
