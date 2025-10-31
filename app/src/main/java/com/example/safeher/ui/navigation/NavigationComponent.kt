@@ -68,6 +68,7 @@ import androidx.navigation.navArgument
 import com.example.safeher.R
 import com.example.safeher.data.model.ErrorMessage
 import com.example.safeher.ui.alert.AlertDetailScreen
+import com.example.safeher.ui.alert.AlertHistoryScreen
 import com.example.safeher.ui.explore.ExploreScreen
 import com.example.safeher.ui.forgotpassword.ForgotPasswordScreen
 import com.example.safeher.ui.friends.FriendsScreen
@@ -82,7 +83,6 @@ import com.example.safeher.ui.splash.SplashViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Date
-import com.example.safeher.ui.alert.AlertHistoryScreen
 
 enum class Screen(@StringRes val title: Int) {
     Explore(R.string.explore_screen_title),

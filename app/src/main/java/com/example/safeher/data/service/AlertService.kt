@@ -13,19 +13,19 @@ import androidx.lifecycle.lifecycleScope
 import com.example.safeher.MainActivity
 import com.example.safeher.R
 import com.example.safeher.data.model.Alert
+import com.example.safeher.data.model.AlertHistory
+import com.example.safeher.data.model.AlertStatus
+import com.example.safeher.data.model.AlertType
+import com.example.safeher.data.repository.AlertHistoryRepository
 import com.example.safeher.data.repository.AlertRepository
 import com.example.safeher.data.repository.AuthRepository
+import com.example.safeher.data.repository.UserRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import com.example.safeher.data.model.AlertHistory
-import com.example.safeher.data.model.AlertType
-import com.example.safeher.data.model.AlertStatus
-import com.example.safeher.data.repository.AlertHistoryRepository
-import com.example.safeher.data.repository.UserRepository
 import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlertService : LifecycleService() {

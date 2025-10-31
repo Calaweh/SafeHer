@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.safeher.data.model.AlertHistory
-import com.example.safeher.data.model.AlertType
 import com.example.safeher.data.repository.AlertHistoryRepository
 import com.example.safeher.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

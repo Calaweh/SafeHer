@@ -10,6 +10,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.safeher.data.model.Alert
+import com.example.safeher.data.model.AlertHistory
+import com.example.safeher.data.model.AlertStatus
+import com.example.safeher.data.model.AlertType
+import com.example.safeher.data.repository.AlertHistoryRepository
 import com.example.safeher.data.repository.AuthRepository
 import com.example.safeher.data.repository.FriendRepository
 import com.example.safeher.data.repository.UserRepository
@@ -18,6 +22,8 @@ import com.huawei.hms.location.FusedLocationProviderClient
 import com.huawei.hms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,12 +34,6 @@ import kotlinx.coroutines.tasks.await
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
-import com.example.safeher.data.model.AlertHistory
-import com.example.safeher.data.model.AlertType
-import com.example.safeher.data.model.AlertStatus
-import com.example.safeher.data.repository.AlertHistoryRepository
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
