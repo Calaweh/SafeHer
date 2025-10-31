@@ -31,8 +31,10 @@ import com.example.safeher.ui.navigation.App
 import com.example.safeher.ui.theme.SafeHerTheme
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.huawei.agconnect.config.AGConnectServicesConfig
+import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
+import com.huawei.hms.common.ApiException
 import com.huawei.hms.maps.MapsInitializer
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.rxjava3.exceptions.UndeliverableException
@@ -41,10 +43,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.huawei.hms.aaid.HmsInstanceId
-import com.huawei.hms.common.ApiException
 import kotlinx.coroutines.withContext
-import com.google.firebase.FirebaseOptions
 import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)

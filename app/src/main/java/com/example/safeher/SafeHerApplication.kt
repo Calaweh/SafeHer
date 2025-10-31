@@ -7,7 +7,6 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
-import com.huawei.agconnect.config.AGConnectServicesConfig
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
